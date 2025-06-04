@@ -1,13 +1,16 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts"
-import { Upload, BarChart3, PieChartIcon } from "lucide-react"
+import { Upload, BarChart3, PieChartIcon, Lock, Eye, EyeOff } from "lucide-react"
 
 interface MarcaMencionada {
   marca: string
@@ -30,6 +33,17 @@ interface MarketShareResult {
   queriesWithGenially: number
   brandDistribution: { brand: string; count: number; percentage: number }[]
   totalBrandMentions: number
+  queryFrequencies: QueryFrequency[]
+  totalQueries: number
+  uniqueQueries: number
+}
+
+interface QueryFrequency {
+  query: string
+  count: number
+  percentage: number
+  withBrands: number
+  withGenially: number
 }
 
 const COLORS = [
@@ -45,11 +59,41 @@ const COLORS = [
   "#D084D0",
 ]
 
+const CORRECT_PASSWORD = "GeniallyTeam2025**"
+
 export default function MarketShareAnalyzer() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [authError, setAuthError] = useState("")
+  const [authLoading, setAuthLoading] = useState(false)
+
   const [jsonInput, setJsonInput] = useState("")
   const [results, setResults] = useState<MarketShareResult | null>(null)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+
+  const handleLogin = () => {
+    setAuthLoading(true)
+    setAuthError("")
+
+    // Simular un pequeño delay para la autenticación
+    setTimeout(() => {
+      if (password === CORRECT_PASSWORD) {
+        setIsAuthenticated(true)
+        setAuthError("")
+      } else {
+        setAuthError("Contraseña incorrecta. Inténtalo de nuevo.")
+      }
+      setAuthLoading(false)
+    }, 500)
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleLogin()
+    }
+  }
 
   const analyzeData = () => {
     setLoading(true)
@@ -62,23 +106,36 @@ export default function MarketShareAnalyzer() {
         throw new Error("Los datos deben ser un array JSON")
       }
 
-      // Filtrar queries que mencionan marcas
-      const queriesWithBrands = data.filter((query) => query.menciona_marca && query.marcasMencionadas)
-
-      // Contar queries que mencionan Genially
-      const queriesWithGenially = queriesWithBrands.filter((query) =>
-        query.marcasMencionadas?.some((marca) => marca.marca.toLowerCase().includes("genially")),
+      // Filtrar queries que mencionan marcas (con validaciones)
+      const queriesWithBrands = data.filter(
+        (query) =>
+          query.menciona_marca &&
+          query.marcasMencionadas &&
+          Array.isArray(query.marcasMencionadas) &&
+          query.marcasMencionadas.length > 0,
       )
 
-      // Contar todas las menciones de marcas
+      // Contar queries que mencionan Genially (con validaciones)
+      const queriesWithGenially = queriesWithBrands.filter((query) =>
+        query.marcasMencionadas?.some(
+          (marca) =>
+            marca && marca.marca && typeof marca.marca === "string" && marca.marca.toLowerCase().includes("genially"),
+        ),
+      )
+
+      // Contar todas las menciones de marcas (con validaciones)
       const brandCounts: { [key: string]: number } = {}
       let totalBrandMentions = 0
 
       queriesWithBrands.forEach((query) => {
         query.marcasMencionadas?.forEach((marca) => {
-          const brandName = marca.marca
-          brandCounts[brandName] = (brandCounts[brandName] || 0) + 1
-          totalBrandMentions++
+          if (marca && marca.marca && typeof marca.marca === "string") {
+            const brandName = marca.marca.trim()
+            if (brandName) {
+              brandCounts[brandName] = (brandCounts[brandName] || 0) + 1
+              totalBrandMentions++
+            }
+          }
         })
       })
 
@@ -91,6 +148,52 @@ export default function MarketShareAnalyzer() {
         }))
         .sort((a, b) => b.count - a.count)
 
+      // Calcular frecuencias de queries (con validaciones)
+      const queryCounts: { [key: string]: { total: number; withBrands: number; withGenially: number } } = {}
+
+      data.forEach((query) => {
+        // Validar que query.query existe y es string
+        if (!query.query || typeof query.query !== "string") {
+          return // Saltar este registro si no tiene query válida
+        }
+
+        const queryText = query.query.toLowerCase().trim()
+        if (!queryText) {
+          return // Saltar si la query está vacía
+        }
+
+        if (!queryCounts[queryText]) {
+          queryCounts[queryText] = { total: 0, withBrands: 0, withGenially: 0 }
+        }
+        queryCounts[queryText].total++
+
+        if (query.menciona_marca && query.marcasMencionadas && Array.isArray(query.marcasMencionadas)) {
+          queryCounts[queryText].withBrands++
+
+          const hasGenially = query.marcasMencionadas.some(
+            (marca) =>
+              marca && marca.marca && typeof marca.marca === "string" && marca.marca.toLowerCase().includes("genially"),
+          )
+
+          if (hasGenially) {
+            queryCounts[queryText].withGenially++
+          }
+        }
+      })
+
+      const queryFrequencies = Object.entries(queryCounts)
+        .map(([query, counts]) => ({
+          query,
+          count: counts.total,
+          percentage: (counts.total / data.length) * 100,
+          withBrands: counts.withBrands,
+          withGenially: counts.withGenially,
+        }))
+        .sort((a, b) => b.count - a.count)
+
+      const totalQueries = data.length
+      const uniqueQueries = queryFrequencies.length
+
       // Calcular market share de Genially
       const geniallyMarketShare =
         queriesWithBrands.length > 0 ? (queriesWithGenially.length / queriesWithBrands.length) * 100 : 0
@@ -101,6 +204,9 @@ export default function MarketShareAnalyzer() {
         queriesWithGenially: queriesWithGenially.length,
         brandDistribution,
         totalBrandMentions,
+        queryFrequencies,
+        totalQueries,
+        uniqueQueries,
       })
     } catch (err) {
       setError(`Error al procesar los datos: ${err instanceof Error ? err.message : "Error desconocido"}`)
@@ -115,12 +221,78 @@ export default function MarketShareAnalyzer() {
     setError("")
   }
 
+  // Pantalla de login
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center space-y-4">
+            <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+              <Lock className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              <CardTitle className="text-2xl">Acceso Restringido</CardTitle>
+              <CardDescription>Ingresa la contraseña para acceder al analizador de Market Share</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="password" className="text-sm font-medium">
+                Contraseña
+              </label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Ingresa la contraseña..."
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+
+            {authError && (
+              <Alert variant="destructive">
+                <AlertDescription>{authError}</AlertDescription>
+              </Alert>
+            )}
+
+            <Button onClick={handleLogin} disabled={!password.trim() || authLoading} className="w-full">
+              {authLoading ? "Verificando..." : "Acceder"}
+            </Button>
+
+            <div className="text-center text-sm text-gray-500">
+              <p>Herramienta interna del equipo Genially</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Aplicación principal (solo se muestra después de autenticarse)
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-gray-900">Analizador de Market Share</h1>
           <p className="text-gray-600">Analiza el market share de Genially y la distribución de marcas en tus datos</p>
+          <div className="flex justify-center">
+            <Badge variant="outline" className="text-xs">
+              Sesión activa - Genially Team
+            </Badge>
+          </div>
         </div>
 
         <Card>
@@ -216,6 +388,38 @@ export default function MarketShareAnalyzer() {
               </CardContent>
             </Card>
 
+            {/* Estadísticas de Queries */}
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-xl">Estadísticas de Queries</CardTitle>
+                <CardDescription>Información sobre las consultas realizadas</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-4 gap-4 mb-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-600">{results.totalQueries}</div>
+                    <div className="text-sm text-gray-600">Total registros</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">{results.uniqueQueries}</div>
+                    <div className="text-sm text-gray-600">Queries únicas</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-purple-600">
+                      {(results.totalQueries / results.uniqueQueries).toFixed(1)}
+                    </div>
+                    <div className="text-sm text-gray-600">Promedio por query</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-orange-600">
+                      {Math.max(...results.queryFrequencies.map((q) => q.count))}
+                    </div>
+                    <div className="text-sm text-gray-600">Máximo repeticiones</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Gráfico de Barras */}
             <Card className="md:col-span-2">
               <CardHeader>
@@ -302,12 +506,66 @@ export default function MarketShareAnalyzer() {
                             {brand.brand}
                             {brand.brand.toLowerCase().includes("genially") && (
                               <Badge className="ml-2" variant="default">
-                                Genially
+                                ⭐
                               </Badge>
                             )}
                           </td>
                           <td className="p-2 text-right">{brand.count}</td>
                           <td className="p-2 text-right">{brand.percentage.toFixed(2)}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tabla de Queries */}
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle>Análisis de Queries</CardTitle>
+                <CardDescription>Frecuencia de cada query y su relación con marcas</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-2">#</th>
+                        <th className="text-left p-2">Query</th>
+                        <th className="text-right p-2">Total</th>
+                        <th className="text-right p-2">%</th>
+                        <th className="text-right p-2">Con Marcas</th>
+                        <th className="text-right p-2">Con Genially</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {results.queryFrequencies.map((queryData, index) => (
+                        <tr key={queryData.query} className="border-b hover:bg-gray-50">
+                          <td className="p-2">{index + 1}</td>
+                          <td className="p-2 font-medium max-w-md">
+                            <div className="truncate" title={queryData.query}>
+                              {queryData.query}
+                            </div>
+                          </td>
+                          <td className="p-2 text-right">
+                            <Badge variant="outline">{queryData.count}</Badge>
+                          </td>
+                          <td className="p-2 text-right">{queryData.percentage.toFixed(1)}%</td>
+                          <td className="p-2 text-right">
+                            {queryData.withBrands > 0 ? (
+                              <Badge variant="secondary">{queryData.withBrands}</Badge>
+                            ) : (
+                              <span className="text-gray-400">0</span>
+                            )}
+                          </td>
+                          <td className="p-2 text-right">
+                            {queryData.withGenially > 0 ? (
+                              <Badge className="bg-blue-100 text-blue-800">{queryData.withGenially}</Badge>
+                            ) : (
+                              <span className="text-gray-400">0</span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
