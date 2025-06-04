@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -10,21 +10,23 @@ import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts"
-import { Upload, BarChart3, PieChartIcon, Lock, Eye, EyeOff } from "lucide-react"
+import { Upload, BarChart3, PieChartIcon, Lock, Eye, EyeOff, FilterIcon, XCircle } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
+import { SAMPLE_DATASET, type QueryData } from "../data/sample-dataset"
 
 interface MarcaMencionada {
   marca: string
   sentimiento: number
   highlights: string[]
-}
-
-interface QueryData {
-  _id: string
-  menciona_marca: boolean
-  marcasMencionadas?: MarcaMencionada[]
-  query: string
-  fecha: string
-  ia: string
 }
 
 interface MarketShareResult {
@@ -36,6 +38,7 @@ interface MarketShareResult {
   queryFrequencies: QueryFrequency[]
   totalQueries: number
   uniqueQueries: number
+  rawData: QueryData[]
 }
 
 interface QueryFrequency {
@@ -72,6 +75,8 @@ export default function MarketShareAnalyzer() {
   const [results, setResults] = useState<MarketShareResult | null>(null)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [selectedQuery, setSelectedQuery] = useState<string>("all")
+  const [useSampleData, setUseSampleData] = useState(false)
 
   const handleLogin = () => {
     setAuthLoading(true)
@@ -95,12 +100,21 @@ export default function MarketShareAnalyzer() {
     }
   }
 
-  const analyzeData = () => {
+  const analyzeData = (usePreloaded = false) => {
     setLoading(true)
     setError("")
+    setSelectedQuery("all") // Resetear el filtro al analizar nuevos datos
 
     try {
-      const data: QueryData[] = JSON.parse(jsonInput)
+      let data: QueryData[]
+
+      if (usePreloaded) {
+        data = SAMPLE_DATASET
+        setUseSampleData(true)
+      } else {
+        data = JSON.parse(jsonInput)
+        setUseSampleData(false)
+      }
 
       if (!Array.isArray(data)) {
         throw new Error("Los datos deben ser un array JSON")
@@ -207,6 +221,7 @@ export default function MarketShareAnalyzer() {
         queryFrequencies,
         totalQueries,
         uniqueQueries,
+        rawData: data, // Guardar los datos originales para filtrado
       })
     } catch (err) {
       setError(`Error al procesar los datos: ${err instanceof Error ? err.message : "Error desconocido"}`)
@@ -219,7 +234,77 @@ export default function MarketShareAnalyzer() {
     setJsonInput("")
     setResults(null)
     setError("")
+    setSelectedQuery("all")
+    setUseSampleData(false)
   }
+
+  // Filtrar resultados basados en la query seleccionada
+  const filteredResults = useMemo(() => {
+    if (!results || selectedQuery === "all") {
+      return results
+    }
+
+    // Filtrar los datos originales por la query seleccionada
+    const filteredData = results.rawData.filter(
+      (item) => item.query && item.query.toLowerCase().trim() === selectedQuery.toLowerCase().trim(),
+    )
+
+    // Filtrar queries que mencionan marcas
+    const queriesWithBrands = filteredData.filter(
+      (query) =>
+        query.menciona_marca &&
+        query.marcasMencionadas &&
+        Array.isArray(query.marcasMencionadas) &&
+        query.marcasMencionadas.length > 0,
+    )
+
+    // Contar queries que mencionan Genially
+    const queriesWithGenially = queriesWithBrands.filter((query) =>
+      query.marcasMencionadas?.some(
+        (marca) =>
+          marca && marca.marca && typeof marca.marca === "string" && marca.marca.toLowerCase().includes("genially"),
+      ),
+    )
+
+    // Contar todas las menciones de marcas
+    const brandCounts: { [key: string]: number } = {}
+    let totalBrandMentions = 0
+
+    queriesWithBrands.forEach((query) => {
+      query.marcasMencionadas?.forEach((marca) => {
+        if (marca && marca.marca && typeof marca.marca === "string") {
+          const brandName = marca.marca.trim()
+          if (brandName) {
+            brandCounts[brandName] = (brandCounts[brandName] || 0) + 1
+            totalBrandMentions++
+          }
+        }
+      })
+    })
+
+    // Crear distribución de marcas
+    const brandDistribution = Object.entries(brandCounts)
+      .map(([brand, count]) => ({
+        brand,
+        count,
+        percentage: totalBrandMentions > 0 ? (count / totalBrandMentions) * 100 : 0,
+      }))
+      .sort((a, b) => b.count - a.count)
+
+    // Calcular market share de Genially
+    const geniallyMarketShare =
+      queriesWithBrands.length > 0 ? (queriesWithGenially.length / queriesWithBrands.length) * 100 : 0
+
+    return {
+      ...results,
+      geniallyMarketShare,
+      totalQueriesWithBrands: queriesWithBrands.length,
+      queriesWithGenially: queriesWithGenially.length,
+      brandDistribution,
+      totalBrandMentions,
+      totalQueries: filteredData.length,
+    }
+  }, [results, selectedQuery])
 
   // Pantalla de login
   if (!isAuthenticated) {
@@ -310,15 +395,36 @@ export default function MarketShareAnalyzer() {
               onChange={(e) => setJsonInput(e.target.value)}
               className="min-h-[200px] font-mono text-sm"
             />
-            <div className="flex gap-2">
-              <Button onClick={analyzeData} disabled={!jsonInput.trim() || loading} className="flex items-center gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                onClick={() => analyzeData(false)}
+                disabled={!jsonInput.trim() || loading}
+                className="flex items-center gap-2"
+              >
                 <BarChart3 className="w-4 h-4" />
-                {loading ? "Analizando..." : "Analizar Datos"}
+                {loading ? "Analizando..." : "Analizar JSON"}
+              </Button>
+              <Button
+                onClick={() => analyzeData(true)}
+                disabled={loading}
+                variant="secondary"
+                className="flex items-center gap-2"
+              >
+                <BarChart3 className="w-4 h-4" />
+                {loading ? "Cargando..." : "Usar Datos preconfigurados"}
               </Button>
               <Button variant="outline" onClick={clearData}>
                 Limpiar
               </Button>
             </div>
+
+            {useSampleData && (
+              <Alert>
+                <AlertDescription>
+                  📊 Usando dataset preconfigurado con 15 registros de muestra para demostración.
+                </AlertDescription>
+              </Alert>
+            )}
 
             {error && (
               <Alert variant="destructive">
@@ -329,251 +435,303 @@ export default function MarketShareAnalyzer() {
         </Card>
 
         {results && (
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* Market Share de Genially */}
+          <>
+            {/* Filtro de Query */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-xl">Market Share de Genially</CardTitle>
-                <CardDescription>Porcentaje de queries donde aparece mencionada Genially</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center space-y-4">
-                  <div className="text-4xl font-bold text-blue-600">{results.geniallyMarketShare.toFixed(1)}%</div>
-                  <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
-                    <div>
-                      <div className="font-semibold">{results.queriesWithGenially}</div>
-                      <div>Queries con Genially</div>
-                    </div>
-                    <div>
-                      <div className="font-semibold">{results.totalQueriesWithBrands}</div>
-                      <div>Total queries con marcas</div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Resumen de Distribución */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl">Resumen de Marcas</CardTitle>
-                <CardDescription>Estadísticas generales de menciones de marcas</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-green-600">{results.brandDistribution.length}</div>
-                      <div className="text-sm text-gray-600">Marcas únicas</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-purple-600">{results.totalBrandMentions}</div>
-                      <div className="text-sm text-gray-600">Total menciones</div>
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Top 3 Marcas:</h4>
-                    <div className="space-y-1">
-                      {results.brandDistribution.slice(0, 3).map((brand, index) => (
-                        <div key={brand.brand} className="flex justify-between items-center">
-                          <span className="text-sm">
-                            {index + 1}. {brand.brand}
-                          </span>
-                          <Badge variant="secondary">{brand.percentage.toFixed(1)}%</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Estadísticas de Queries */}
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle className="text-xl">Estadísticas de Queries</CardTitle>
-                <CardDescription>Información sobre las consultas realizadas</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-4 gap-4 mb-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600">{results.totalQueries}</div>
-                    <div className="text-sm text-gray-600">Total registros</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">{results.uniqueQueries}</div>
-                    <div className="text-sm text-gray-600">Queries únicas</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-600">
-                      {(results.totalQueries / results.uniqueQueries).toFixed(1)}
-                    </div>
-                    <div className="text-sm text-gray-600">Promedio por query</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-orange-600">
-                      {Math.max(...results.queryFrequencies.map((q) => q.count))}
-                    </div>
-                    <div className="text-sm text-gray-600">Máximo repeticiones</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Gráfico de Barras */}
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5" />
-                  Distribución de Market Share por Marca
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <FilterIcon className="w-4 h-4" />
+                  Filtrar por Query
                 </CardTitle>
-                <CardDescription>Porcentaje de menciones de cada marca</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={results.brandDistribution.slice(0, 10)}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="brand" angle={-45} textAnchor="end" height={80} fontSize={12} />
-                      <YAxis />
-                      <Tooltip
-                        formatter={(value: number) => [`${value.toFixed(1)}%`, "Porcentaje"]}
-                        labelFormatter={(label) => `Marca: ${label}`}
-                      />
-                      <Bar dataKey="percentage" fill="#3B82F6" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Gráfico Circular */}
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <PieChartIcon className="w-5 h-5" />
-                  Distribución Visual de Marcas (Top 10)
-                </CardTitle>
-                <CardDescription>Representación visual del market share</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={results.brandDistribution.slice(0, 10)}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ brand, percentage }) => `${brand}: ${percentage.toFixed(1)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="percentage"
-                      >
-                        {results.brandDistribution.slice(0, 10).map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                <div className="flex gap-2 items-center">
+                  <Select value={selectedQuery} onValueChange={setSelectedQuery}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecciona una query para filtrar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>Queries</SelectLabel>
+                        <SelectItem value="all">Todas las queries</SelectItem>
+                        {results.queryFrequencies.map((query) => (
+                          <SelectItem key={query.query} value={query.query}>
+                            {query.query} ({query.count})
+                          </SelectItem>
                         ))}
-                      </Pie>
-                      <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  {selectedQuery !== "all" && (
+                    <Button variant="ghost" size="icon" onClick={() => setSelectedQuery("all")} title="Limpiar filtro">
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
+                {selectedQuery !== "all" && (
+                  <div className="mt-2">
+                    <Badge variant="secondary" className="text-xs">
+                      Mostrando datos filtrados para: "{selectedQuery}"
+                    </Badge>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* Tabla Detallada */}
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle>Distribución Detallada de Marcas</CardTitle>
-                <CardDescription>Lista completa de todas las marcas mencionadas</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-2">#</th>
-                        <th className="text-left p-2">Marca</th>
-                        <th className="text-right p-2">Menciones</th>
-                        <th className="text-right p-2">Porcentaje</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {results.brandDistribution.map((brand, index) => (
-                        <tr key={brand.brand} className="border-b hover:bg-gray-50">
-                          <td className="p-2">{index + 1}</td>
-                          <td className="p-2 font-medium">
-                            {brand.brand}
-                            {brand.brand.toLowerCase().includes("genially") && (
-                              <Badge className="ml-2" variant="default">
-                                ⭐
-                              </Badge>
-                            )}
-                          </td>
-                          <td className="p-2 text-right">{brand.count}</td>
-                          <td className="p-2 text-right">{brand.percentage.toFixed(2)}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Market Share de Genially */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-xl">Market Share de Genially</CardTitle>
+                  <CardDescription>Porcentaje de queries donde aparece mencionada Genially</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center space-y-4">
+                    <div className="text-4xl font-bold text-blue-600">
+                      {filteredResults.geniallyMarketShare.toFixed(1)}%
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                      <div>
+                        <div className="font-semibold">{filteredResults.queriesWithGenially}</div>
+                        <div>Queries con Genially</div>
+                      </div>
+                      <div>
+                        <div className="font-semibold">{filteredResults.totalQueriesWithBrands}</div>
+                        <div>Total queries con marcas</div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* Tabla de Queries */}
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle>Análisis de Queries</CardTitle>
-                <CardDescription>Frecuencia de cada query y su relación con marcas</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-2">#</th>
-                        <th className="text-left p-2">Query</th>
-                        <th className="text-right p-2">Total</th>
-                        <th className="text-right p-2">%</th>
-                        <th className="text-right p-2">Con Marcas</th>
-                        <th className="text-right p-2">Con Genially</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {results.queryFrequencies.map((queryData, index) => (
-                        <tr key={queryData.query} className="border-b hover:bg-gray-50">
-                          <td className="p-2">{index + 1}</td>
-                          <td className="p-2 font-medium max-w-md">
-                            <div className="truncate" title={queryData.query}>
-                              {queryData.query}
-                            </div>
-                          </td>
-                          <td className="p-2 text-right">
-                            <Badge variant="outline">{queryData.count}</Badge>
-                          </td>
-                          <td className="p-2 text-right">{queryData.percentage.toFixed(1)}%</td>
-                          <td className="p-2 text-right">
-                            {queryData.withBrands > 0 ? (
-                              <Badge variant="secondary">{queryData.withBrands}</Badge>
-                            ) : (
-                              <span className="text-gray-400">0</span>
-                            )}
-                          </td>
-                          <td className="p-2 text-right">
-                            {queryData.withGenially > 0 ? (
-                              <Badge className="bg-blue-100 text-blue-800">{queryData.withGenially}</Badge>
-                            ) : (
-                              <span className="text-gray-400">0</span>
-                            )}
-                          </td>
+              {/* Resumen de Distribución */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-xl">Resumen de Marcas</CardTitle>
+                  <CardDescription>Estadísticas generales de menciones de marcas</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">
+                          {filteredResults.brandDistribution.length}
+                        </div>
+                        <div className="text-sm text-gray-600">Marcas únicas</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-purple-600">{filteredResults.totalBrandMentions}</div>
+                        <div className="text-sm text-gray-600">Total menciones</div>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-2">Top 3 Marcas:</h4>
+                      <div className="space-y-1">
+                        {filteredResults.brandDistribution.slice(0, 3).map((brand, index) => (
+                          <div key={brand.brand} className="flex justify-between items-center">
+                            <span className="text-sm">
+                              {index + 1}. {brand.brand}
+                            </span>
+                            <Badge variant="secondary">{brand.percentage.toFixed(1)}%</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Estadísticas de Queries - Solo mostrar cuando no hay filtro */}
+              {selectedQuery === "all" && (
+                <Card className="md:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="text-xl">Estadísticas de Queries</CardTitle>
+                    <CardDescription>Información sobre las consultas realizadas</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-4 gap-4 mb-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-blue-600">{results.totalQueries}</div>
+                        <div className="text-sm text-gray-600">Total registros</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">{results.uniqueQueries}</div>
+                        <div className="text-sm text-gray-600">Queries únicas</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-purple-600">
+                          {(results.totalQueries / results.uniqueQueries).toFixed(1)}
+                        </div>
+                        <div className="text-sm text-gray-600">Promedio por query</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-orange-600">
+                          {Math.max(...results.queryFrequencies.map((q) => q.count))}
+                        </div>
+                        <div className="text-sm text-gray-600">Máximo repeticiones</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Gráfico de Barras */}
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5" />
+                    Distribución de Market Share por Marca
+                  </CardTitle>
+                  <CardDescription>Porcentaje de menciones de cada marca</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={filteredResults.brandDistribution.slice(0, 10)}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="brand" angle={-45} textAnchor="end" height={80} fontSize={12} />
+                        <YAxis />
+                        <Tooltip
+                          formatter={(value: number) => [`${value.toFixed(1)}%`, "Porcentaje"]}
+                          labelFormatter={(label) => `Marca: ${label}`}
+                        />
+                        <Bar dataKey="percentage" fill="#3B82F6" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Gráfico Circular */}
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <PieChartIcon className="w-5 h-5" />
+                    Distribución Visual de Marcas (Top 10)
+                  </CardTitle>
+                  <CardDescription>Representación visual del market share</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={filteredResults.brandDistribution.slice(0, 10)}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ brand, percentage }) => `${brand}: ${percentage.toFixed(1)}%`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="percentage"
+                        >
+                          {filteredResults.brandDistribution.slice(0, 10).map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Tabla Detallada */}
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle>Distribución Detallada de Marcas</CardTitle>
+                  <CardDescription>Lista completa de todas las marcas mencionadas</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-2">#</th>
+                          <th className="text-left p-2">Marca</th>
+                          <th className="text-right p-2">Menciones</th>
+                          <th className="text-right p-2">Porcentaje</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                      </thead>
+                      <tbody>
+                        {filteredResults.brandDistribution.map((brand, index) => (
+                          <tr key={brand.brand} className="border-b hover:bg-gray-50">
+                            <td className="p-2">{index + 1}</td>
+                            <td className="p-2 font-medium">
+                              {brand.brand}
+                              {brand.brand.toLowerCase().includes("genially") && (
+                                <Badge className="ml-2" variant="default">
+                                  ⭐
+                                </Badge>
+                              )}
+                            </td>
+                            <td className="p-2 text-right">{brand.count}</td>
+                            <td className="p-2 text-right">{brand.percentage.toFixed(2)}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Tabla de Queries - Solo mostrar cuando no hay filtro */}
+              {selectedQuery === "all" && (
+                <Card className="md:col-span-2">
+                  <CardHeader>
+                    <CardTitle>Análisis de Queries</CardTitle>
+                    <CardDescription>Frecuencia de cada query y su relación con marcas</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left p-2">#</th>
+                            <th className="text-left p-2">Query</th>
+                            <th className="text-right p-2">Total</th>
+                            <th className="text-right p-2">%</th>
+                            <th className="text-right p-2">Con Marcas</th>
+                            <th className="text-right p-2">Con Genially</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {results.queryFrequencies.map((queryData, index) => (
+                            <tr key={queryData.query} className="border-b hover:bg-gray-50">
+                              <td className="p-2">{index + 1}</td>
+                              <td className="p-2 font-medium max-w-md">
+                                <div className="truncate" title={queryData.query}>
+                                  {queryData.query}
+                                </div>
+                              </td>
+                              <td className="p-2 text-right">
+                                <Badge variant="outline">{queryData.count}</Badge>
+                              </td>
+                              <td className="p-2 text-right">{queryData.percentage.toFixed(1)}%</td>
+                              <td className="p-2 text-right">
+                                {queryData.withBrands > 0 ? (
+                                  <Badge variant="secondary">{queryData.withBrands}</Badge>
+                                ) : (
+                                  <span className="text-gray-400">0</span>
+                                )}
+                              </td>
+                              <td className="p-2 text-right">
+                                {queryData.withGenially > 0 ? (
+                                  <Badge className="bg-blue-100 text-blue-800">{queryData.withGenially}</Badge>
+                                ) : (
+                                  <span className="text-gray-400">0</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>
