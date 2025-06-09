@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts"
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, Legend } from "recharts"
 import { Upload, BarChart3, PieChartIcon, Lock, Eye, EyeOff, FilterIcon, XCircle } from "lucide-react"
 import {
   Select,
@@ -301,6 +301,54 @@ export default function MarketShareAnalyzer() {
       totalQueries: filteredData.length,
     }
   }, [results, selectedQuery])
+
+  // Hook para calcular la evolución semanal de menciones por marca (Top 10 marcas)
+  const weeklyEvolutionData = useMemo(() => {
+    if (!results) return [];
+
+    // Obtener las 10 marcas más mencionadas
+    const topBrands = results.brandDistribution.slice(0, 10).map((b) => b.brand);
+
+    // Agrupar por semana y contar menciones por marca
+    // Suponemos que cada registro en rawData tiene un campo "fecha" (tipo string: "YYYY-MM-DDTHH:mm:ssZ")
+    const weekBrandCount: { [week: string]: { [brand: string]: number } } = {};
+
+    results.rawData.forEach((item) => {
+      if (!item.fecha) return;
+      const dateObj = new Date(item.fecha);
+      // Obtener el año y el número de semana ISO
+      const year = dateObj.getUTCFullYear();
+      const firstDayOfYear = new Date(Date.UTC(year, 0, 1));
+      const pastDaysOfYear = Math.floor((dateObj.getTime() - firstDayOfYear.getTime()) / 86400000);
+      // Semana ISO (aprox)
+      const week = Math.ceil((pastDaysOfYear + firstDayOfYear.getUTCDay() + 1) / 7);
+      const weekKey = `${year}-W${week.toString().padStart(2, "0")}`;
+
+      if (!weekBrandCount[weekKey]) weekBrandCount[weekKey] = {};
+      if (item.marcasMencionadas && Array.isArray(item.marcasMencionadas)) {
+        item.marcasMencionadas.forEach((marca) => {
+          if (
+            marca &&
+            marca.marca &&
+            typeof marca.marca === "string" &&
+            topBrands.includes(marca.marca)
+          ) {
+            weekBrandCount[weekKey][marca.marca] = (weekBrandCount[weekKey][marca.marca] || 0) + 1;
+          }
+        });
+      }
+    });
+
+    // Convertir a array de objetos para Recharts, ordenado por semana
+    const sortedWeeks = Object.keys(weekBrandCount).sort();
+    return sortedWeeks.map((week) => {
+      const entry: any = { week };
+      topBrands.forEach((brand) => {
+        entry[brand] = weekBrandCount[week][brand] || 0;
+      });
+      return entry;
+    });
+  }, [results]);
 
   // Pantalla de login
   if (!isAuthenticated) {
@@ -710,6 +758,44 @@ export default function MarketShareAnalyzer() {
                             ))}
                         </tbody>
                       </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Gráfico de Evolución Semanal - Solo mostrar cuando no hay filtro */}
+              {results && weeklyEvolutionData.length > 0 && (
+                <Card className="md:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5" />
+                      Evolución semanal de menciones por marca (Top 10)
+                    </CardTitle>
+                    <CardDescription>
+                      Número de menciones semanales para las 10 marcas más mencionadas
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-96">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={weeklyEvolutionData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="week" />
+                          <YAxis allowDecimals={false} />
+                          <Tooltip />
+                          <Legend />
+                          {results.brandDistribution.slice(0, 10).map((brand, idx) => (
+                            <Line
+                              key={brand.brand}
+                              type="monotone"
+                              dataKey={brand.brand}
+                              stroke={COLORS[idx % COLORS.length]}
+                              strokeWidth={2}
+                              dot={false}
+                            />
+                          ))}
+                        </LineChart>
+                      </ResponsiveContainer>
                     </div>
                   </CardContent>
                 </Card>
