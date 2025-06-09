@@ -71,7 +71,7 @@ export default function MarketShareAnalyzer() {
   const [authError, setAuthError] = useState("")
   const [authLoading, setAuthLoading] = useState(false)
 
-  // Elimina los estados relacionados con el input de JSON
+  // Elimina los estados relacionados con el input de JSON.
   // const [jsonInput, setJsonInput] = useState("")
   const [results, setResults] = useState<MarketShareResult | null>(null)
   const [error, setError] = useState("")
