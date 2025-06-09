@@ -71,22 +71,24 @@ export default function MarketShareAnalyzer() {
   const [authError, setAuthError] = useState("")
   const [authLoading, setAuthLoading] = useState(false)
 
-  const [jsonInput, setJsonInput] = useState("")
+  // Elimina los estados relacionados con el input de JSON
+  // const [jsonInput, setJsonInput] = useState("")
   const [results, setResults] = useState<MarketShareResult | null>(null)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [selectedQuery, setSelectedQuery] = useState<string>("all")
-  const [useSampleData, setUseSampleData] = useState(false)
+  // const [useSampleData, setUseSampleData] = useState(false)
 
+  // Al autenticar, carga automáticamente el SAMPLE_DATASET
   const handleLogin = () => {
     setAuthLoading(true)
     setAuthError("")
 
-    // Simular un pequeño delay para la autenticación
     setTimeout(() => {
       if (password === CORRECT_PASSWORD) {
         setIsAuthenticated(true)
         setAuthError("")
+        analyzeData() // Cargar datos preconfigurados al iniciar sesión
       } else {
         setAuthError("Contraseña incorrecta. Inténtalo de nuevo.")
       }
@@ -100,21 +102,14 @@ export default function MarketShareAnalyzer() {
     }
   }
 
-  const analyzeData = (usePreloaded = false) => {
+  // Solo usa SAMPLE_DATASET, elimina la opción de analizar JSON manualmente
+  const analyzeData = () => {
     setLoading(true)
     setError("")
-    setSelectedQuery("all") // Resetear el filtro al analizar nuevos datos
+    setSelectedQuery("all")
 
     try {
-      let data: QueryData[]
-
-      if (usePreloaded) {
-        data = SAMPLE_DATASET
-        setUseSampleData(true)
-      } else {
-        data = JSON.parse(jsonInput)
-        setUseSampleData(false)
-      }
+      const data = SAMPLE_DATASET
 
       if (!Array.isArray(data)) {
         throw new Error("Los datos deben ser un array JSON")
@@ -231,11 +226,12 @@ export default function MarketShareAnalyzer() {
   }
 
   const clearData = () => {
-    setJsonInput("")
+    // setJsonInput("")
     setResults(null)
     setError("")
     setSelectedQuery("all")
-    setUseSampleData(false)
+    // setUseSampleData(false)
+    analyzeData() // Siempre recarga el sample dataset
   }
 
   // Filtrar resultados basados en la query seleccionada
@@ -372,7 +368,7 @@ export default function MarketShareAnalyzer() {
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-gray-900">Analizador de Market Share</h1>
-          <p className="text-gray-600">Analiza el market share de Genially y la distribución de marcas en tus datos</p>
+          <p className="text-gray-600">Analiza el market share de Genially y sus competidores en diferentes LLMs</p>
           <div className="flex justify-center">
             <Badge variant="outline" className="text-xs">
               Sesión activa - Genially Team
@@ -380,59 +376,8 @@ export default function MarketShareAnalyzer() {
           </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Upload className="w-5 h-5" />
-              Datos JSON
-            </CardTitle>
-            <CardDescription>Pega aquí tu JSON con los datos de las queries para analizar</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Textarea
-              placeholder="Pega aquí tu JSON..."
-              value={jsonInput}
-              onChange={(e) => setJsonInput(e.target.value)}
-              className="min-h-[200px] font-mono text-sm"
-            />
-            <div className="flex gap-2 flex-wrap">
-              <Button
-                onClick={() => analyzeData(false)}
-                disabled={!jsonInput.trim() || loading}
-                className="flex items-center gap-2"
-              >
-                <BarChart3 className="w-4 h-4" />
-                {loading ? "Analizando..." : "Analizar JSON"}
-              </Button>
-              <Button
-                onClick={() => analyzeData(true)}
-                disabled={loading}
-                variant="secondary"
-                className="flex items-center gap-2"
-              >
-                <BarChart3 className="w-4 h-4" />
-                {loading ? "Cargando..." : "Usar Datos preconfigurados"}
-              </Button>
-              <Button variant="outline" onClick={clearData}>
-                Limpiar
-              </Button>
-            </div>
-
-            {useSampleData && (
-              <Alert>
-                <AlertDescription>
-                  📊 Usando dataset preconfigurado con 15 registros de muestra para demostración.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
+        {/* Elimina el Card de carga de JSON manual */}
+        {/* El resto del dashboard permanece igual */}
 
         {results && (
           <>
@@ -643,7 +588,8 @@ export default function MarketShareAnalyzer() {
                   <CardDescription>Lista completa de todas las marcas mencionadas</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto">
+                  {/* Limitar altura y permitir scroll vertical */}
+                  <div className="overflow-y-auto max-h-96">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b">
@@ -683,14 +629,13 @@ export default function MarketShareAnalyzer() {
                     <CardDescription>Frecuencia de cada query y su relación con marcas</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto overflow-y-auto max-h-64">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b">
                             <th className="text-left p-2">#</th>
                             <th className="text-left p-2">Query</th>
                             <th className="text-right p-2">Total</th>
-                            <th className="text-right p-2">%</th>
                             <th className="text-right p-2">Con Marcas</th>
                             <th className="text-right p-2">Con Genially</th>
                           </tr>
@@ -704,10 +649,7 @@ export default function MarketShareAnalyzer() {
                                   {queryData.query}
                                 </div>
                               </td>
-                              <td className="p-2 text-right">
-                                <Badge variant="outline">{queryData.count}</Badge>
-                              </td>
-                              <td className="p-2 text-right">{queryData.percentage.toFixed(1)}%</td>
+                              <td className="p-2 text-right">{queryData.count}</td>
                               <td className="p-2 text-right">
                                 {queryData.withBrands > 0 ? (
                                   <Badge variant="secondary">{queryData.withBrands}</Badge>
@@ -724,6 +666,48 @@ export default function MarketShareAnalyzer() {
                               </td>
                             </tr>
                           ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Tabla de Queries donde se menciona Genially */}
+              {selectedQuery === "all" && (
+                <Card className="md:col-span-2">
+                  <CardHeader>
+                    <CardTitle>Queries con Genially</CardTitle>
+                    <CardDescription>Listado de queries donde se menciona Genially</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto overflow-y-auto max-h-64">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left p-2">#</th>
+                            <th className="text-left p-2">Query</th>
+                            <th className="text-right p-2">Total</th>
+                            <th className="text-right p-2">Menciones de Genially</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {results.queryFrequencies
+                            .filter((q) => q.withGenially > 0)
+                            .map((queryData, index) => (
+                              <tr key={queryData.query} className="border-b hover:bg-gray-50">
+                                <td className="p-2">{index + 1}</td>
+                                <td className="p-2 font-medium max-w-md">
+                                  <div className="truncate" title={queryData.query}>
+                                    {queryData.query}
+                                  </div>
+                                </td>
+                                <td className="p-2 text-right">{queryData.count}</td>
+                                <td className="p-2 text-right">
+                                  <Badge className="bg-blue-100 text-blue-800">{queryData.withGenially}</Badge>
+                                </td>
+                              </tr>
+                            ))}
                         </tbody>
                       </table>
                     </div>
