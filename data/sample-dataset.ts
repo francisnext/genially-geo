@@ -2,15 +2,22 @@ export interface MarcaMencionada {
   marca: string
   sentimiento: number
   highlights: string[]
+  pros: string[]
+  cons: string[]
 }
 
 export interface QueryData {
   _id: string
+  _name?: string
+  _createTime?: string
+  _updateTime?: string
   menciona_marca: boolean
+  menciona_dominio?: boolean | null
   marcasMencionadas?: MarcaMencionada[]
   query: string
   fecha: string
   ia: string
+  respuesta?: string | null
 }
 
 // Dataset preconfigurado para pruebas

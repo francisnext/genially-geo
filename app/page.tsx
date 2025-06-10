@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, Legend } from "recharts"
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, Legend, ScatterChart, Scatter, ZAxis } from "recharts"
 import { Upload, BarChart3, PieChartIcon, Lock, Eye, EyeOff, FilterIcon, XCircle } from "lucide-react"
 import {
   Select,
@@ -27,13 +27,15 @@ interface MarcaMencionada {
   marca: string
   sentimiento: number
   highlights: string[]
+  pros: string[]
+  cons: string[]
 }
 
 interface MarketShareResult {
   geniallyMarketShare: number
   totalQueriesWithBrands: number
   queriesWithGenially: number
-  brandDistribution: { brand: string; count: number; percentage: number }[]
+  brandDistribution: { brand: string; count: number; percentage: number; avgSentiment: number }[]
   totalBrandMentions: number
   queryFrequencies: QueryFrequency[]
   totalQueries: number
@@ -47,6 +49,18 @@ interface QueryFrequency {
   percentage: number
   withBrands: number
   withGenially: number
+}
+
+interface BrandDetail {
+  query: string
+  highlights: string[]
+  pros: string[]
+  cons: string[]
+  sentimiento: number
+}
+
+interface BrandDetails {
+  [brand: string]: BrandDetail[]
 }
 
 const COLORS = [
@@ -77,6 +91,7 @@ export default function MarketShareAnalyzer() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [selectedQuery, setSelectedQuery] = useState<string>("all")
+  const [selectedDetailBrand, setSelectedDetailBrand] = useState<string>("all")
   // const [useSampleData, setUseSampleData] = useState(false)
 
   // Al autenticar, carga automáticamente el SAMPLE_DATASET
@@ -133,7 +148,7 @@ export default function MarketShareAnalyzer() {
       )
 
       // Contar todas las menciones de marcas (con validaciones)
-      const brandCounts: { [key: string]: number } = {}
+      const brandCounts: { [key: string]: { count: number; totalSentiment: number } } = {}
       let totalBrandMentions = 0
 
       queriesWithBrands.forEach((query) => {
@@ -141,7 +156,11 @@ export default function MarketShareAnalyzer() {
           if (marca && marca.marca && typeof marca.marca === "string") {
             const brandName = marca.marca.trim()
             if (brandName) {
-              brandCounts[brandName] = (brandCounts[brandName] || 0) + 1
+              if (!brandCounts[brandName]) {
+                brandCounts[brandName] = { count: 0, totalSentiment: 0 }
+              }
+              brandCounts[brandName].count += 1
+              brandCounts[brandName].totalSentiment += marca.sentimiento || 0
               totalBrandMentions++
             }
           }
@@ -150,10 +169,11 @@ export default function MarketShareAnalyzer() {
 
       // Crear distribución de marcas
       const brandDistribution = Object.entries(brandCounts)
-        .map(([brand, count]) => ({
+        .map(([brand, data]) => ({
           brand,
-          count,
-          percentage: (count / totalBrandMentions) * 100,
+          count: data.count,
+          percentage: (data.count / totalBrandMentions) * 100,
+          avgSentiment: data.totalSentiment / data.count
         }))
         .sort((a, b) => b.count - a.count)
 
@@ -263,7 +283,7 @@ export default function MarketShareAnalyzer() {
     )
 
     // Contar todas las menciones de marcas
-    const brandCounts: { [key: string]: number } = {}
+    const brandCounts: { [key: string]: { count: number; totalSentiment: number } } = {}
     let totalBrandMentions = 0
 
     queriesWithBrands.forEach((query) => {
@@ -271,7 +291,11 @@ export default function MarketShareAnalyzer() {
         if (marca && marca.marca && typeof marca.marca === "string") {
           const brandName = marca.marca.trim()
           if (brandName) {
-            brandCounts[brandName] = (brandCounts[brandName] || 0) + 1
+            if (!brandCounts[brandName]) {
+              brandCounts[brandName] = { count: 0, totalSentiment: 0 }
+            }
+            brandCounts[brandName].count += 1
+            brandCounts[brandName].totalSentiment += marca.sentimiento || 0
             totalBrandMentions++
           }
         }
@@ -280,10 +304,11 @@ export default function MarketShareAnalyzer() {
 
     // Crear distribución de marcas
     const brandDistribution = Object.entries(brandCounts)
-      .map(([brand, count]) => ({
+      .map(([brand, data]) => ({
         brand,
-        count,
-        percentage: totalBrandMentions > 0 ? (count / totalBrandMentions) * 100 : 0,
+        count: data.count,
+        percentage: (data.count / totalBrandMentions) * 100,
+        avgSentiment: data.totalSentiment / data.count
       }))
       .sort((a, b) => b.count - a.count)
 
@@ -350,25 +375,47 @@ export default function MarketShareAnalyzer() {
     });
   }, [results]);
 
+  // Función para procesar los detalles de las marcas
+  const getBrandDetails = (data: QueryData[]): BrandDetails => {
+    const details: BrandDetails = {}
+    
+    data.forEach(item => {
+      if (item.marcasMencionadas && Array.isArray(item.marcasMencionadas)) {
+        item.marcasMencionadas.forEach(marca => {
+          if (!marca.marca) return
+          
+          const brandName = marca.marca.trim()
+          if (!details[brandName]) {
+            details[brandName] = []
+          }
+          
+          details[brandName].push({
+            query: item.query || "",
+            highlights: marca.highlights || [],
+            sentimiento: marca.sentimiento || 0,
+            pros: marca.pros || [],
+            cons: marca.cons || []
+          })
+        })
+      }
+    })
+    return details
+  }
+
   // Pantalla de login
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4" suppressHydrationWarning>
         <Card className="w-full max-w-md">
           <CardHeader className="text-center space-y-4">
-            <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center" suppressHydrationWarning>
-              <Lock className="w-6 h-6 text-blue-600" />
-            </div>
+          <img src="/favicon.png" alt="Genially Logo" className="mx-auto w-10 h-10 mb-4" />
             <div suppressHydrationWarning>
               <CardTitle className="text-2xl">Acceso Restringido</CardTitle>
-              <CardDescription>Ingresa la contraseña para acceder al analizador de Market Share</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium">
-                Contraseña
-              </label>
+              
               <div className="relative">
                 <Input
                   id="password"
@@ -587,15 +634,20 @@ export default function MarketShareAnalyzer() {
                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                           </Pie>
-                          <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
+                          <Tooltip 
+                            formatter={(value: number, name: string, props: any) => [
+                              `${value.toFixed(1)}%`,
+                              props.payload.brand
+                            ]}
+                          />
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Tabla Detallada */}
-                <Card>
+                {/* Nueva tabla de detalles por marca y gráfico de dispersión */}
+                <Card className="md:col-span-1">
                   <CardHeader>
                     <CardTitle>Distribución Detallada de Marcas</CardTitle>
                     <CardDescription>Lista completa de todas las marcas mencionadas</CardDescription>
@@ -610,6 +662,7 @@ export default function MarketShareAnalyzer() {
                             <th className="text-left p-2">Marca</th>
                             <th className="text-right p-2">Menciones</th>
                             <th className="text-right p-2">Porcentaje</th>
+                            <th className="text-right p-2">Sentimiento</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -626,10 +679,96 @@ export default function MarketShareAnalyzer() {
                               </td>
                               <td className="p-2 text-right">{brand.count}</td>
                               <td className="p-2 text-right">{brand.percentage.toFixed(2)}%</td>
+                              <td className="p-2 text-right">{brand.avgSentiment.toFixed(2)}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="md:col-span-1">
+                  <CardHeader>
+                    <CardTitle>Market Share vs. Sentimiento (Top 10)</CardTitle>
+                    <CardDescription>Relación entre presencia en el mercado y sentimiento para las 10 marcas mejor valoradas (tamaño = número de menciones)</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[450px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ScatterChart
+                          margin={{
+                            top: 20,
+                            right: 20,
+                            bottom: 20,
+                            left: 20,
+                          }}
+                        >
+                          <CartesianGrid />
+                          <XAxis 
+                            type="number" 
+                            dataKey="percentage" 
+                            name="Market Share" 
+                            unit="%" 
+                            domain={[0, 'dataMax + 5']}
+                            label={{ value: 'Market Share (%)', position: 'bottom' }}
+                          />
+                          <YAxis 
+                            type="number" 
+                            dataKey="avgSentiment" 
+                            name="Sentimiento" 
+                            domain={[0.6, 1]}
+                            label={{ value: 'Sentimiento', angle: -90, position: 'left' }}
+                          />
+                          <ZAxis 
+                            type="number" 
+                            dataKey="count" 
+                            range={[400, 1200]} 
+                            name="Menciones"
+                          />
+                          <Tooltip 
+                            cursor={{ strokeDasharray: '3 3' }}
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                const data = payload[0].payload;
+                                return (
+                                  <div className="bg-white p-2 border rounded shadow-sm">
+                                    <p className="font-semibold">{data.brand}</p>
+                                    <p>Market Share: {data.percentage.toFixed(1)}%</p>
+                                    <p>Sentimiento: {data.avgSentiment.toFixed(2)}</p>
+                                    <p>Menciones: {data.count}</p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <Scatter
+                            name="Marcas"
+                            data={filteredResults.brandDistribution
+                              .map(brand => ({
+                                ...brand,
+                                avgSentiment: brand.avgSentiment || 0
+                              }))
+                              .sort((a, b) => b.avgSentiment - a.avgSentiment)
+                              .slice(0, 10)
+                            }
+                            fill="#8884d8"
+                          >
+                            {filteredResults.brandDistribution
+                              .sort((a, b) => b.avgSentiment - a.avgSentiment)
+                              .slice(0, 10)
+                              .map((entry, index) => (
+                                <Cell 
+                                  key={`cell-${index}`} 
+                                  fill={COLORS[index % COLORS.length]} 
+                                  fillOpacity={0.5}
+                                />
+                              ))
+                            }
+                          </Scatter>
+                        </ScatterChart>
+                      </ResponsiveContainer>
                     </div>
                   </CardContent>
                 </Card>
@@ -669,139 +808,244 @@ export default function MarketShareAnalyzer() {
                 </CardContent>
               </Card>
             )}
-          </>
-        )}
 
-        {/* Tabla de Queries - Solo mostrar cuando no hay filtro */}
-        {selectedQuery === "all" && (
-          <Card className="md:col-span-2">
-            <CardHeader>
-              <CardTitle>Análisis de Queries</CardTitle>
-              <CardDescription>Frecuencia de cada query y su relación con marcas</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto overflow-y-auto max-h-64">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2">#</th>
-                      <th className="text-left p-2">Query</th>
-                      <th className="text-right p-2">Total</th>
-                      <th className="text-right p-2">Con Marcas</th>
-                      <th className="text-right p-2">Con Genially</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {results?.queryFrequencies.map((queryData, index) => (
-                      <tr key={queryData.query} className="border-b hover:bg-gray-50">
-                        <td className="p-2">{index + 1}</td>
-                        <td className="p-2 font-medium max-w-md">
-                          <div className="truncate" title={queryData.query}>
-                            {queryData.query}
-                          </div>
-                        </td>
-                        <td className="p-2 text-right">{queryData.count}</td>
-                        <td className="p-2 text-right">
-                          {queryData.withBrands > 0 ? (
-                            <Badge variant="secondary">{queryData.withBrands}</Badge>
-                          ) : (
-                            <span className="text-gray-400">0</span>
-                          )}
-                        </td>
-                        <td className="p-2 text-right">
-                          {queryData.withGenially > 0 ? (
-                            <Badge className="bg-blue-100 text-blue-800">{queryData.withGenially}</Badge>
-                          ) : (
-                            <span className="text-gray-400">0</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Tabla de Queries donde se menciona Genially */}
-        {selectedQuery === "all" && (
-          <Card className="md:col-span-2">
-            <CardHeader>
-              <CardTitle>Queries con Genially</CardTitle>
-              <CardDescription>Listado de queries donde se menciona Genially</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto overflow-y-auto max-h-64">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2">#</th>
-                      <th className="text-left p-2">Query</th>
-                      <th className="text-right p-2">Total</th>
-                      <th className="text-right p-2">Menciones de Genially</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {results?.queryFrequencies
-                      .filter((q) => q.withGenially > 0)
-                      .map((queryData, index) => (
-                        <tr key={queryData.query} className="border-b hover:bg-gray-50">
-                          <td className="p-2">{index + 1}</td>
-                          <td className="p-2 font-medium max-w-md">
-                            <div className="truncate" title={queryData.query}>
-                              {queryData.query}
-                            </div>
-                          </td>
-                          <td className="p-2 text-right">{queryData.count}</td>
-                          <td className="p-2 text-right">
-                            <Badge className="bg-blue-100 text-blue-800">{queryData.withGenially}</Badge>
-                          </td>
+            {/* Tabla de Queries - Solo mostrar cuando no hay filtro */}
+            {selectedQuery === "all" && (
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle>Análisis de Queries</CardTitle>
+                  <CardDescription>Frecuencia de cada query y su relación con marcas</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto overflow-y-auto max-h-64">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-2">#</th>
+                          <th className="text-left p-2">Query</th>
+                          <th className="text-right p-2">Total</th>
+                          <th className="text-right p-2">Con Marcas</th>
+                          <th className="text-right p-2">Con Genially</th>
                         </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                      </thead>
+                      <tbody>
+                        {results?.queryFrequencies.map((queryData, index) => (
+                          <tr key={queryData.query} className="border-b hover:bg-gray-50">
+                            <td className="p-2">{index + 1}</td>
+                            <td className="p-2 font-medium max-w-md">
+                              <div className="truncate" title={queryData.query}>
+                                {queryData.query}
+                              </div>
+                            </td>
+                            <td className="p-2 text-right">{queryData.count}</td>
+                            <td className="p-2 text-right">
+                              {queryData.withBrands > 0 ? (
+                                <Badge variant="secondary">{queryData.withBrands}</Badge>
+                              ) : (
+                                <span className="text-gray-400">0</span>
+                              )}
+                            </td>
+                            <td className="p-2 text-right">
+                              {queryData.withGenially > 0 ? (
+                                <Badge className="bg-blue-100 text-blue-800">{queryData.withGenially}</Badge>
+                              ) : (
+                                <span className="text-gray-400">0</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-        {/* Gráfico de Evolución Semanal - Solo mostrar cuando no hay filtro */}
-        {results && weeklyEvolutionData.length > 0 && (
-          <Card className="md:col-span-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
-                Evolución semanal de menciones por marca (Top 10)
-              </CardTitle>
-              <CardDescription>
-                Número de menciones semanales para las 10 marcas más mencionadas
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-96">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={weeklyEvolutionData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="week" />
-                    <YAxis allowDecimals={false} />
-                    <Tooltip />
-                    <Legend />
-                    {results.brandDistribution.slice(0, 10).map((brand, idx) => (
-                      <Line
-                        key={brand.brand}
-                        type="monotone"
-                        dataKey={brand.brand}
-                        stroke={COLORS[idx % COLORS.length]}
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                    ))}
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+            {/* Tabla de Queries donde se menciona Genially */}
+            {selectedQuery === "all" && (
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle>Queries con Genially</CardTitle>
+                  <CardDescription>Listado de queries donde se menciona Genially</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto overflow-y-auto max-h-64">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-2">#</th>
+                          <th className="text-left p-2">Query</th>
+                          <th className="text-right p-2">Total</th>
+                          <th className="text-right p-2">Menciones de Genially</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {results?.queryFrequencies
+                          .filter((q) => q.withGenially > 0)
+                          .map((queryData, index) => (
+                            <tr key={queryData.query} className="border-b hover:bg-gray-50">
+                              <td className="p-2">{index + 1}</td>
+                              <td className="p-2 font-medium max-w-md">
+                                <div className="truncate" title={queryData.query}>
+                                  {queryData.query}
+                                </div>
+                              </td>
+                              <td className="p-2 text-right">{queryData.count}</td>
+                              <td className="p-2 text-right">
+                                <Badge className="bg-blue-100 text-blue-800">{queryData.withGenially}</Badge>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Gráfico de Evolución Semanal - Solo mostrar cuando no hay filtro */}
+            {results && weeklyEvolutionData.length > 0 && (
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5" />
+                    Evolución semanal de menciones por marca (Top 10)
+                  </CardTitle>
+                  <CardDescription>
+                    Número de menciones semanales para las 10 marcas más mencionadas
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-96">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={weeklyEvolutionData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="week" />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip />
+                        <Legend />
+                        {results.brandDistribution.slice(0, 10).map((brand, idx) => (
+                          <Line
+                            key={brand.brand}
+                            type="monotone"
+                            dataKey={brand.brand}
+                            stroke={COLORS[idx % COLORS.length]}
+                            strokeWidth={2}
+                            dot={false}
+                          />
+                        ))}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Nueva tabla de detalles por marca */}
+            {filteredResults && (
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle>Análisis Detallado por Marca</CardTitle>
+                  <CardDescription>Detalles completos de cada marca por query</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="mb-4">
+                    <Select value={selectedDetailBrand} onValueChange={setSelectedDetailBrand}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecciona una marca para filtrar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectLabel>Marcas</SelectLabel>
+                          <SelectItem value="all">Todas las marcas</SelectItem>
+                          {Object.keys(getBrandDetails(filteredResults.rawData))
+                            .sort()
+                            .map((brand) => (
+                              <SelectItem key={brand} value={brand}>
+                                {brand}
+                              </SelectItem>
+                            ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="overflow-y-auto max-h-[600px]">
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 bg-white">
+                        <tr className="border-b">
+                          <th className="text-left p-2">Marca</th>
+                          <th className="text-left p-2">Query</th>
+                          <th className="text-left p-2">Highlights</th>
+                          <th className="text-left p-2">Pros</th>
+                          <th className="text-left p-2">Contras</th>
+                          <th className="text-right p-2">Sentimiento</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(getBrandDetails(filteredResults.rawData))
+                          .filter(([brand]) => selectedDetailBrand === "all" || brand === selectedDetailBrand)
+                          .map(([brand, details]) =>
+                            details.map((detail, detailIndex) => (
+                              <tr key={`${brand}-${detailIndex}`} className="border-b hover:bg-gray-50">
+                                <td className="p-2 font-medium">
+                                  {brand}
+                                  {brand.toLowerCase().includes("genially") && (
+                                    <Badge className="ml-2" variant="default">
+                                      ⭐
+                                    </Badge>
+                                  )}
+                                </td>
+                                <td className="p-2 max-w-[200px]">
+                                  <div className="truncate" title={detail.query}>
+                                    {detail.query}
+                                  </div>
+                                </td>
+                                <td className="p-2 max-w-[300px]">
+                                  <ul className="list-disc list-inside">
+                                    {detail.highlights.map((highlight, idx) => (
+                                      <li key={idx} className="whitespace-normal break-words" title={highlight}>
+                                        {highlight}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </td>
+                                <td className="p-2 max-w-[300px]">
+                                  <ul className="list-disc list-inside">
+                                    {detail.pros.map((pro, idx) => (
+                                      <li key={idx} className="whitespace-normal break-words" title={pro}>
+                                        {pro}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </td>
+                                <td className="p-2 max-w-[300px]">
+                                  <ul className="list-disc list-inside">
+                                    {detail.cons.map((con, idx) => (
+                                      <li key={idx} className="whitespace-normal break-words" title={con}>
+                                        {con}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </td>
+                                <td className="p-2 text-right">
+                                  <Badge 
+                                    variant={detail.sentimiento >= 0.8 ? "default" : 
+                                            detail.sentimiento >= 0.6 ? "secondary" : "destructive"}
+                                  >
+                                    {detail.sentimiento.toFixed(2)}
+                                  </Badge>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </>
         )}
       </div>
     </div>
