@@ -762,7 +762,7 @@ export default function MarketShareAnalyzer() {
                                 <Cell 
                                   key={`cell-${index}`} 
                                   fill={COLORS[index % COLORS.length]} 
-                                  fillOpacity={0.5}
+                                  fillOpacity={0.6}
                                 />
                               ))
                             }
