@@ -750,13 +750,13 @@ export default function MarketShareAnalyzer() {
                                 ...brand,
                                 avgSentiment: brand.avgSentiment || 0
                               }))
-                              .sort((a, b) => b.avgSentiment - a.avgSentiment)
+                              .sort((a, b) => b.count - a.count)
                               .slice(0, 10)
                             }
                             fill="#8884d8"
                           >
                             {filteredResults.brandDistribution
-                              .sort((a, b) => b.avgSentiment - a.avgSentiment)
+                              .sort((a, b) => b.count - a.count)
                               .slice(0, 10)
                               .map((entry, index) => (
                                 <Cell 
