@@ -21,15 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-import { SAMPLE_DATASET, type QueryData } from "../data/sample-dataset"
-
-interface MarcaMencionada {
-  marca: string
-  sentimiento: number
-  highlights: string[]
-  pros: string[]
-  cons: string[]
-}
+import { SAMPLE_DATASET, QueryData, Tool, MarcaMencionada } from "@/data/sample-dataset"
 
 interface MarketShareResult {
   geniallyMarketShare: number
@@ -85,14 +77,13 @@ export default function MarketShareAnalyzer() {
   const [authError, setAuthError] = useState("")
   const [authLoading, setAuthLoading] = useState(false)
 
-  // Elimina los estados relacionados con el input de JSON.
-  // const [jsonInput, setJsonInput] = useState("")
-  const [results, setResults] = useState<MarketShareResult | null>(null)
+  const [apiKey, setApiKey] = useState("genially-team-2025")
   const [error, setError] = useState("")
+  const [analysisResult, setAnalysisResult] = useState<MarketShareResult | null>(null)
+  const [selectedQuery, setSelectedQuery] = useState("all")
   const [loading, setLoading] = useState(false)
-  const [selectedQuery, setSelectedQuery] = useState<string>("all")
+  const [results, setResults] = useState<MarketShareResult | null>(null)
   const [selectedDetailBrand, setSelectedDetailBrand] = useState<string>("all")
-  // const [useSampleData, setUseSampleData] = useState(false)
 
   // Al autenticar, carga automáticamente el SAMPLE_DATASET
   const handleLogin = () => {
@@ -103,7 +94,9 @@ export default function MarketShareAnalyzer() {
       if (password === CORRECT_PASSWORD) {
         setIsAuthenticated(true)
         setAuthError("")
-        analyzeData() // Cargar datos preconfigurados al iniciar sesión
+        setTimeout(() => {
+          analyzeData()
+        }, 100)
       } else {
         setAuthError("Contraseña incorrecta. Inténtalo de nuevo.")
       }
@@ -119,138 +112,159 @@ export default function MarketShareAnalyzer() {
 
   // Solo usa SAMPLE_DATASET, elimina la opción de analizar JSON manualmente
   const analyzeData = () => {
-    setLoading(true)
-    setError("")
-    setSelectedQuery("all")
-
-    try {
-      const data = SAMPLE_DATASET
-
-      if (!Array.isArray(data)) {
-        throw new Error("Los datos deben ser un array JSON")
-      }
-
-      // Filtrar queries que mencionan marcas (con validaciones)
-      const queriesWithBrands = data.filter(
-        (query) =>
-          query.menciona_marca &&
-          query.marcasMencionadas &&
-          Array.isArray(query.marcasMencionadas) &&
-          query.marcasMencionadas.length > 0,
-      )
-
-      // Contar queries que mencionan Genially (con validaciones)
-      const queriesWithGenially = queriesWithBrands.filter((query) =>
-        query.marcasMencionadas?.some(
-          (marca) =>
-            marca && marca.marca && typeof marca.marca === "string" && marca.marca.toLowerCase().includes("genially"),
-        ),
-      )
-
-      // Contar todas las menciones de marcas (con validaciones)
-      const brandCounts: { [key: string]: { count: number; totalSentiment: number } } = {}
-      let totalBrandMentions = 0
-
-      queriesWithBrands.forEach((query) => {
-        query.marcasMencionadas?.forEach((marca) => {
-          if (marca && marca.marca && typeof marca.marca === "string") {
-            const brandName = marca.marca.trim()
-            if (brandName) {
-              if (!brandCounts[brandName]) {
-                brandCounts[brandName] = { count: 0, totalSentiment: 0 }
-              }
-              brandCounts[brandName].count += 1
-              brandCounts[brandName].totalSentiment += marca.sentimiento || 0
-              totalBrandMentions++
-            }
-          }
-        })
-      })
-
-      // Crear distribución de marcas
-      const brandDistribution = Object.entries(brandCounts)
-        .map(([brand, data]) => ({
-          brand,
-          count: data.count,
-          percentage: (data.count / totalBrandMentions) * 100,
-          avgSentiment: data.totalSentiment / data.count
-        }))
-        .sort((a, b) => b.count - a.count)
-
-      // Calcular frecuencias de queries (con validaciones)
-      const queryCounts: { [key: string]: { total: number; withBrands: number; withGenially: number } } = {}
-
-      data.forEach((query) => {
-        // Validar que query.query existe y es string
-        if (!query.query || typeof query.query !== "string") {
-          return // Saltar este registro si no tiene query válida
-        }
-
-        const queryText = query.query.toLowerCase().trim()
-        if (!queryText) {
-          return // Saltar si la query está vacía
-        }
-
-        if (!queryCounts[queryText]) {
-          queryCounts[queryText] = { total: 0, withBrands: 0, withGenially: 0 }
-        }
-        queryCounts[queryText].total++
-
-        if (query.menciona_marca && query.marcasMencionadas && Array.isArray(query.marcasMencionadas)) {
-          queryCounts[queryText].withBrands++
-
-          const hasGenially = query.marcasMencionadas.some(
-            (marca) =>
-              marca && marca.marca && typeof marca.marca === "string" && marca.marca.toLowerCase().includes("genially"),
-          )
-
-          if (hasGenially) {
-            queryCounts[queryText].withGenially++
-          }
-        }
-      })
-
-      const queryFrequencies = Object.entries(queryCounts)
-        .map(([query, counts]) => ({
-          query,
-          count: counts.total,
-          percentage: (counts.total / data.length) * 100,
-          withBrands: counts.withBrands,
-          withGenially: counts.withGenially,
-        }))
-        .sort((a, b) => b.count - a.count)
-
-      const totalQueries = data.length
-      const uniqueQueries = queryFrequencies.length
-
-      // Calcular market share de Genially
-      const geniallyMarketShare =
-        queriesWithBrands.length > 0 ? (queriesWithGenially.length / queriesWithBrands.length) * 100 : 0
-
-      setResults({
-        geniallyMarketShare,
-        totalQueriesWithBrands: queriesWithBrands.length,
-        queriesWithGenially: queriesWithGenially.length,
-        brandDistribution,
-        totalBrandMentions,
-        queryFrequencies,
-        totalQueries,
-        uniqueQueries,
-        rawData: data, // Guardar los datos originales para filtrado
-      })
-    } catch (err) {
-      setError(`Error al procesar los datos: ${err instanceof Error ? err.message : "Error desconocido"}`)
-    } finally {
-      setLoading(false)
+    if (!apiKey) {
+      setError("Por favor, ingresa una API key")
+      return
     }
+
+    setLoading(true)
+    const data = SAMPLE_DATASET
+    console.log("Datos cargados:", data)
+
+    // Verificar la estructura de los datos en tools
+    console.log("\nEstructura detallada de tools en el primer registro:")
+    data[0]?.tools?.forEach((tool, index) => {
+      console.log(`Tool ${index + 1}:`, {
+        name: tool.name,
+        nombre: tool.nombre,
+        raw: tool
+      })
+    })
+
+    const totalQueries = data.length
+    const uniqueQueries = new Set(data.map((item) => item.query.toLowerCase())).size
+
+    // Calcular frecuencias de queries
+    const queryCounts: { [key: string]: { count: number; withBrands: number; withGenially: number } } = {}
+    data.forEach((item) => {
+      const query = item.query.toLowerCase()
+      if (!queryCounts[query]) {
+        queryCounts[query] = { count: 0, withBrands: 0, withGenially: 0 }
+      }
+      queryCounts[query].count++
+      
+      // Verificar si tiene marcas
+      if (item.tools && item.tools.length > 0) {
+        queryCounts[query].withBrands++
+      }
+      
+      // Verificar si tiene Genially
+      if (item.tools?.some(tool => 
+        (tool.name || tool.nombre || "").toLowerCase().includes("genially")
+      )) {
+        queryCounts[query].withGenially++
+      }
+    })
+
+    const queryFrequencies = Object.entries(queryCounts)
+      .map(([query, data]) => ({
+        query,
+        count: data.count,
+        withBrands: data.withBrands,
+        withGenially: data.withGenially,
+        percentage: (data.count / totalQueries) * 100
+      }))
+      .sort((a, b) => b.count - a.count)
+
+    // Función auxiliar para verificar si una marca es Genially
+    const isGenially = (name: string) => {
+      if (!name) return false
+      const normalizedName = name.toLowerCase()
+      const result = normalizedName.includes("genially")
+      console.log(`Verificando si "${name}" es Genially: ${result}`)
+      return result
+    }
+
+    // Calcular total de menciones de marcas y menciones de Genially
+    let totalBrandMentions = 0
+    let geniallyMentions = 0
+    let queriesWithGenially = 0
+    const brandCounts: { [key: string]: { count: number; totalSentiment: number } } = {}
+
+    data.forEach((item, index) => {
+      let hasGeniallyInQuery = false
+      console.log(`\nProcesando query ${index + 1}:`, item.query)
+
+      // Procesar tools
+      item.tools?.forEach((tool) => {
+        const brand = tool.name || tool.nombre || ""
+        if (!brand) {
+          console.log("Tool sin nombre encontrada:", tool)
+          return
+        }
+        totalBrandMentions++
+        console.log(`Marca encontrada: "${brand}"`)
+        
+        // Actualizar conteo de marcas
+        if (!brandCounts[brand]) {
+          brandCounts[brand] = { count: 0, totalSentiment: 0 }
+        }
+        brandCounts[brand].count++
+        brandCounts[brand].totalSentiment += tool.sentiment || tool.sentimiento || 0
+        
+        if (isGenially(brand)) {
+          geniallyMentions++
+          hasGeniallyInQuery = true
+          console.log(`¡Genially encontrado en la query ${index + 1}!`)
+        }
+      })
+
+      // Si Genially aparece en esta query, incrementar el contador
+      if (hasGeniallyInQuery) {
+        queriesWithGenially++
+        console.log(`Query ${index + 1} tiene Genially. Total hasta ahora: ${queriesWithGenially}`)
+      }
+    })
+
+    // Calcular menciones de marcas
+    const totalQueriesWithBrands = data.filter((item) => 
+      (item.tools && item.tools.length > 0)
+    ).length
+
+    console.log("\nResumen de conteos:")
+    console.log("Total de queries:", totalQueries)
+    console.log("Queries con marcas:", totalQueriesWithBrands)
+    console.log("Total menciones de marcas:", totalBrandMentions)
+    console.log("Menciones de Genially:", geniallyMentions)
+    console.log("Queries con Genially:", queriesWithGenially)
+
+    // Calcular market share de Genially basado en menciones totales
+    const geniallyMarketShare = totalBrandMentions > 0 ? (geniallyMentions / totalBrandMentions) * 100 : 0
+
+    console.log("\nMarket Share de Genially:", geniallyMarketShare.toFixed(2) + "%")
+
+    // Crear distribución de marcas
+    const brandDistribution = Object.entries(brandCounts)
+      .map(([brand, data]) => ({
+        brand,
+        count: data.count,
+        percentage: (data.count / totalBrandMentions) * 100,
+        avgSentiment: data.totalSentiment / data.count
+      }))
+      .sort((a, b) => b.count - a.count)
+
+    const result: MarketShareResult = {
+      geniallyMarketShare,
+      totalQueriesWithBrands,
+      queriesWithGenially,
+      brandDistribution,
+      totalBrandMentions,
+      queryFrequencies,
+      totalQueries,
+      uniqueQueries,
+      rawData: data,
+    }
+
+    console.log("\nResultado final:", result)
+    setAnalysisResult(result)
+    setResults(result)
+    setLoading(false)
   }
 
   const clearData = () => {
-    // setJsonInput("")
     setResults(null)
     setError("")
     setSelectedQuery("all")
-    // setUseSampleData(false)
     analyzeData() // Siempre recarga el sample dataset
   }
 
@@ -335,7 +349,6 @@ export default function MarketShareAnalyzer() {
     const topBrands = results.brandDistribution.slice(0, 10).map((b) => b.brand);
 
     // Agrupar por semana y contar menciones por marca
-    // Suponemos que cada registro en rawData tiene un campo "fecha" (tipo string: "YYYY-MM-DDTHH:mm:ssZ")
     const weekBrandCount: { [week: string]: { [brand: string]: number } } = {};
 
     results.rawData.forEach((item) => {
@@ -350,15 +363,13 @@ export default function MarketShareAnalyzer() {
       const weekKey = `${year}-W${week.toString().padStart(2, "0")}`;
 
       if (!weekBrandCount[weekKey]) weekBrandCount[weekKey] = {};
-      if (item.marcasMencionadas && Array.isArray(item.marcasMencionadas)) {
-        item.marcasMencionadas.forEach((marca) => {
-          if (
-            marca &&
-            marca.marca &&
-            typeof marca.marca === "string" &&
-            topBrands.includes(marca.marca)
-          ) {
-            weekBrandCount[weekKey][marca.marca] = (weekBrandCount[weekKey][marca.marca] || 0) + 1;
+      
+      // Procesar tools en lugar de marcasMencionadas
+      if (item.tools && Array.isArray(item.tools)) {
+        item.tools.forEach((tool) => {
+          const brand = tool.name || tool.nombre || "";
+          if (brand && topBrands.includes(brand)) {
+            weekBrandCount[weekKey][brand] = (weekBrandCount[weekKey][brand] || 0) + 1;
           }
         });
       }
@@ -378,27 +389,27 @@ export default function MarketShareAnalyzer() {
   // Función para procesar los detalles de las marcas
   const getBrandDetails = (data: QueryData[]): BrandDetails => {
     const details: BrandDetails = {}
-    
-    data.forEach(item => {
-      if (item.marcasMencionadas && Array.isArray(item.marcasMencionadas)) {
-        item.marcasMencionadas.forEach(marca => {
-          if (!marca.marca) return
-          
-          const brandName = marca.marca.trim()
-          if (!details[brandName]) {
-            details[brandName] = []
-          }
-          
-          details[brandName].push({
-            query: item.query || "",
-            highlights: marca.highlights || [],
-            sentimiento: marca.sentimiento || 0,
-            pros: marca.pros || [],
-            cons: marca.cons || []
-          })
+
+    data.forEach((item) => {
+      // Procesar tools
+      item.tools?.forEach((tool) => {
+        const brand = tool.name || tool.nombre || ""
+        if (!brand) return
+
+        if (!details[brand]) {
+          details[brand] = []
+        }
+
+        details[brand].push({
+          query: item.query,
+          highlights: tool.highlights || [],
+          pros: tool.pros || [],
+          cons: tool.cons || tool.contras || [],
+          sentimiento: tool.sentiment || tool.sentimiento || 0,
         })
-      }
+      })
     })
+
     return details
   }
 
@@ -468,11 +479,24 @@ export default function MarketShareAnalyzer() {
           
         </div>
 
-        {/* Elimina el Card de carga de JSON manual */}
-        {/* El resto del dashboard permanece igual */}
+        {/* Mostrar mensaje de carga */}
+        {loading && (
+          <Card>
+            <CardContent className="p-6">
+              <div className="text-center">Cargando datos...</div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Mostrar error si existe */}
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
         {/* Contenido principal */}
-        {results && (
+        {results && !loading && (
           <>
             {/* Filtro de Query */}
             <Card>
@@ -594,7 +618,14 @@ export default function MarketShareAnalyzer() {
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={filteredResults.brandDistribution.slice(0, 10)}>
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="brand" angle={-45} textAnchor="end" height={80} fontSize={12} />
+                          <XAxis 
+                            dataKey="brand" 
+                            angle={-45} 
+                            textAnchor="end" 
+                            height={80} 
+                            fontSize={12}
+                            interval={0}
+                          />
                           <YAxis />
                           <Tooltip
                             formatter={(value: number) => [`${value.toFixed(1)}%`, "Porcentaje"]}
@@ -627,6 +658,7 @@ export default function MarketShareAnalyzer() {
                             labelLine={false}
                             label={({ brand, percentage }) => `${brand}: ${percentage.toFixed(1)}%`}
                             outerRadius={80}
+                            innerRadius={40}
                             fill="#8884d8"
                             dataKey="percentage"
                           >
@@ -691,7 +723,7 @@ export default function MarketShareAnalyzer() {
                 <Card className="md:col-span-1">
                   <CardHeader>
                     <CardTitle>Market Share vs. Sentimiento (Top 10)</CardTitle>
-                    <CardDescription>Relación entre presencia en el mercado y sentimiento para las 10 marcas mejor valoradas (tamaño = número de menciones)</CardDescription>
+                    <CardDescription>Relación entre presencia en el mercado y sentimiento para las 10 marcas mejor valoradas</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="h-[450px]">
@@ -775,39 +807,7 @@ export default function MarketShareAnalyzer() {
               </div>
             )}
 
-            {/* Estadísticas de Queries - Solo mostrar cuando no hay filtro */}
-            {selectedQuery === "all" && (
-              <Card className="md:col-span-2">
-                <CardHeader>
-                  <CardTitle className="text-xl">Estadísticas de Queries</CardTitle>
-                  <CardDescription>Información sobre las consultas realizadas</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-4 gap-4 mb-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">{results.totalQueries}</div>
-                      <div className="text-sm text-gray-600">Total registros</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-green-600">{results.uniqueQueries}</div>
-                      <div className="text-sm text-gray-600">Queries únicas</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-purple-600">
-                        {(results.totalQueries / results.uniqueQueries).toFixed(1)}
-                      </div>
-                      <div className="text-sm text-gray-600">Promedio por query</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-orange-600">
-                        {Math.max(...results.queryFrequencies.map((q) => q.count))}
-                      </div>
-                      <div className="text-sm text-gray-600">Máximo repeticiones</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            
 
             {/* Tabla de Queries - Solo mostrar cuando no hay filtro */}
             {selectedQuery === "all" && (
@@ -1045,7 +1045,50 @@ export default function MarketShareAnalyzer() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Estadísticas de Queries - Solo mostrar cuando no hay filtro */}
+            {selectedQuery === "all" && (
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle className="text-xl">Estadísticas & QA de Queries</CardTitle>
+                  <CardDescription>Información sobre las consultas realizadas</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-4 gap-4 mb-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">{results.totalQueries}</div>
+                      <div className="text-sm text-gray-600">Total registros</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">{results.uniqueQueries}</div>
+                      <div className="text-sm text-gray-600">Queries únicas</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-purple-600">
+                        {(results.totalQueries / results.uniqueQueries).toFixed(1)}
+                      </div>
+                      <div className="text-sm text-gray-600">Promedio por query</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-orange-600">
+                        {Math.max(...results.queryFrequencies.map((q) => q.count))}
+                      </div>
+                      <div className="text-sm text-gray-600">Máximo repeticiones</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </>
+        )}
+
+        {/* Mostrar mensaje si no hay resultados */}
+        {!results && !loading && isAuthenticated && (
+          <Card>
+            <CardContent className="p-6">
+              <div className="text-center text-gray-500">No hay datos disponibles para mostrar</div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>
