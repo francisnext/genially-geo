@@ -817,7 +817,28 @@ export default function MarketShareAnalyzer() {
                   <CardDescription>Frecuencia de cada query y su relación con marcas</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto overflow-y-auto max-h-64">
+                  <div className="mb-4">
+                    <Select 
+                      value={selectedDetailBrand} 
+                      onValueChange={setSelectedDetailBrand}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Filtrar por marca" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectLabel>Marcas</SelectLabel>
+                          <SelectItem value="all">Todas las marcas</SelectItem>
+                          {results.brandDistribution.map((brand) => (
+                            <SelectItem key={brand.brand} value={brand.brand}>
+                              {brand.brand}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="overflow-x-auto overflow-y-auto max-h-96">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b">
@@ -826,76 +847,62 @@ export default function MarketShareAnalyzer() {
                           <th className="text-right p-2">Total</th>
                           <th className="text-right p-2">Con Marcas</th>
                           <th className="text-right p-2">Con Genially</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {results?.queryFrequencies.map((queryData, index) => (
-                          <tr key={queryData.query} className="border-b hover:bg-gray-50">
-                            <td className="p-2">{index + 1}</td>
-                            <td className="p-2 font-medium max-w-md">
-                              <div className="truncate" title={queryData.query}>
-                                {queryData.query}
-                              </div>
-                            </td>
-                            <td className="p-2 text-right">{queryData.count}</td>
-                            <td className="p-2 text-right">
-                              {queryData.withBrands > 0 ? (
-                                <Badge variant="secondary">{queryData.withBrands}</Badge>
-                              ) : (
-                                <span className="text-gray-400">0</span>
-                              )}
-                            </td>
-                            <td className="p-2 text-right">
-                              {queryData.withGenially > 0 ? (
-                                <Badge className="bg-blue-100 text-blue-800">{queryData.withGenially}</Badge>
-                              ) : (
-                                <span className="text-gray-400">0</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Tabla de Queries donde se menciona Genially */}
-            {selectedQuery === "all" && (
-              <Card className="md:col-span-2">
-                <CardHeader>
-                  <CardTitle>Queries con Genially</CardTitle>
-                  <CardDescription>Listado de queries donde se menciona Genially</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto overflow-y-auto max-h-64">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-2">#</th>
-                          <th className="text-left p-2">Query</th>
-                          <th className="text-right p-2">Total</th>
-                          <th className="text-right p-2">Menciones de Genially</th>
+                          <th className="text-left p-2">Marcas Mencionadas</th>
                         </tr>
                       </thead>
                       <tbody>
                         {results?.queryFrequencies
-                          .filter((q) => q.withGenially > 0)
-                          .map((queryData, index) => (
-                            <tr key={queryData.query} className="border-b hover:bg-gray-50">
-                              <td className="p-2">{index + 1}</td>
-                              <td className="p-2 font-medium max-w-md">
-                                <div className="truncate" title={queryData.query}>
-                                  {queryData.query}
-                                </div>
-                              </td>
-                              <td className="p-2 text-right">{queryData.count}</td>
-                              <td className="p-2 text-right">
-                                <Badge className="bg-blue-100 text-blue-800">{queryData.withGenially}</Badge>
-                              </td>
-                            </tr>
-                          ))}
+                          .filter(queryData => {
+                            if (selectedDetailBrand === "all") return true;
+                            // Filtrar por la marca seleccionada
+                            const queryDetails = results.rawData.find(q => q.query === queryData.query);
+                            return queryDetails?.tools?.some(tool => 
+                              (tool.name || tool.nombre || "").toLowerCase() === selectedDetailBrand.toLowerCase()
+                            );
+                          })
+                          .map((queryData, index) => {
+                            // Obtener las marcas mencionadas en esta query
+                            const queryDetails = results.rawData.find(q => q.query === queryData.query);
+                            const mentionedBrands = queryDetails?.tools?.map(tool => tool.name || tool.nombre || "").filter(Boolean) || [];
+                            
+                            return (
+                              <tr key={queryData.query} className="border-b hover:bg-gray-50">
+                                <td className="p-2">{index + 1}</td>
+                                <td className="p-2 font-medium max-w-md">
+                                  <div className="truncate" title={queryData.query}>
+                                    {queryData.query}
+                                  </div>
+                                </td>
+                                <td className="p-2 text-right">{queryData.count}</td>
+                                <td className="p-2 text-right">
+                                  {queryData.withBrands > 0 ? (
+                                    <Badge variant="secondary">{queryData.withBrands}</Badge>
+                                  ) : (
+                                    <span className="text-gray-400">0</span>
+                                  )}
+                                </td>
+                                <td className="p-2 text-right">
+                                  {queryData.withGenially > 0 ? (
+                                    <Badge className="bg-blue-100 text-blue-800">{queryData.withGenially}</Badge>
+                                  ) : (
+                                    <span className="text-gray-400">0</span>
+                                  )}
+                                </td>
+                                <td className="p-2">
+                                  <div className="flex flex-wrap gap-1">
+                                    {mentionedBrands.map((brand, idx) => (
+                                      <Badge 
+                                        key={idx}
+                                        variant={brand.toLowerCase().includes("genially") ? "default" : "secondary"}
+                                      >
+                                        {brand}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
                       </tbody>
                     </table>
                   </div>
