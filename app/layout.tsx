@@ -21,7 +21,7 @@ export default function RootLayout({
       <head>
         <meta name="robots" content="noindex, nofollow" />
       </head>
-      <body>
+      <body className="bg-background text-foreground">
         {children}
       </body>
     </html>

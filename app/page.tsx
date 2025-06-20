@@ -416,12 +416,12 @@ export default function MarketShareAnalyzer() {
   // Pantalla de login
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4" suppressHydrationWarning>
+      <div className="min-h-screen bg-gradient-to-br from-[var(--background)] to-[var(--primary)] flex items-center justify-center p-4" suppressHydrationWarning>
         <Card className="w-full max-w-md">
           <CardHeader className="text-center space-y-4">
-          <img src="/favicon.png" alt="Genially Logo" className="mx-auto w-10 h-10 mb-4" />
+            <img src="/favicon.png" alt="Genially Logo" className="mx-auto w-10 h-10 mb-4" />
             <div suppressHydrationWarning>
-              <CardTitle className="text-2xl">Acceso Restringido</CardTitle>
+              <CardTitle className="text-2xl text-foreground">Acceso Restringido</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -459,7 +459,7 @@ export default function MarketShareAnalyzer() {
               {authLoading ? "Verificando..." : "Acceder"}
             </Button>
 
-            <div className="text-center text-sm text-gray-500" suppressHydrationWarning>
+            <div className="text-center text-sm text-muted-foreground" suppressHydrationWarning>
               <p>Herramienta interna del equipo Genially</p>
             </div>
           </CardContent>
@@ -470,12 +470,12 @@ export default function MarketShareAnalyzer() {
 
   // Aplicación principal (solo se muestra después de autenticarse)
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4" suppressHydrationWarning>
+    <div className="min-h-screen bg-gradient-to-br from-[var(--background)] to-[var(--primary)] p-4" suppressHydrationWarning>
       <div className="max-w-6xl mx-auto space-y-6" suppressHydrationWarning>
         <div className="text-center space-y-2" suppressHydrationWarning>
           <img src="/favicon.png" alt="Genially Logo" className="mx-auto w-10 h-10 mb-4" />
-          <h1 className="text-3xl font-bold text-gray-900">Análisis GEO de Genially</h1>
-          <p className="text-gray-600">Analiza el market share de Genially y sus competidores en diferentes LLMs</p>
+          <h1 className="text-3xl font-bold text-foreground">Análisis GEO de Genially</h1>
+          <p className="text-muted-foreground">Analiza el market share de Genially y sus competidores en diferentes LLMs</p>
           
         </div>
 
@@ -550,10 +550,10 @@ export default function MarketShareAnalyzer() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-center space-y-4">
-                      <div className="text-4xl font-bold text-blue-600">
+                      <div className="text-4xl font-bold text-primary">
                         {filteredResults.geniallyMarketShare.toFixed(1)}%
                       </div>
-                      <div className="grid grid-cols-2 gap-4 text-sm text-gray-600" suppressHydrationWarning>
+                      <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground" suppressHydrationWarning>
                         <div suppressHydrationWarning>
                           <div className="font-semibold">{filteredResults.queriesWithGenially}</div>
                           <div>Queries con Genially</div>
@@ -577,14 +577,14 @@ export default function MarketShareAnalyzer() {
                     <div className="space-y-4" suppressHydrationWarning>
                       <div className="grid grid-cols-2 gap-4" suppressHydrationWarning>
                         <div className="text-center" suppressHydrationWarning>
-                          <div className="text-2xl font-bold text-green-600">
+                          <div className="text-2xl font-bold text-success">
                             {filteredResults.brandDistribution.length}
                           </div>
-                          <div className="text-sm text-gray-600">Marcas únicas</div>
+                          <div className="text-sm text-muted-foreground">Marcas únicas</div>
                         </div>
                         <div className="text-center" suppressHydrationWarning>
-                          <div className="text-2xl font-bold text-purple-600">{filteredResults.totalBrandMentions}</div>
-                          <div className="text-sm text-gray-600">Total menciones</div>
+                          <div className="text-2xl font-bold text-primary">{filteredResults.totalBrandMentions}</div>
+                          <div className="text-sm text-muted-foreground">Total menciones</div>
                         </div>
                       </div>
                       <div suppressHydrationWarning>
@@ -688,8 +688,8 @@ export default function MarketShareAnalyzer() {
                     {/* Limitar altura y permitir scroll vertical */}
                     <div className="overflow-y-auto max-h-96">
                       <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b">
+                        <thead className="border-b border-border bg-card">
+                          <tr>
                             <th className="text-left p-2">#</th>
                             <th className="text-left p-2">Marca</th>
                             <th className="text-right p-2">Menciones</th>
@@ -699,7 +699,7 @@ export default function MarketShareAnalyzer() {
                         </thead>
                         <tbody>
                           {filteredResults.brandDistribution.map((brand, index) => (
-                            <tr key={brand.brand} className="border-b hover:bg-gray-50">
+                            <tr key={brand.brand} className="border-b border-border hover:bg-card">
                               <td className="p-2">{index + 1}</td>
                               <td className="p-2 font-medium">
                                 {brand.brand}
@@ -840,8 +840,8 @@ export default function MarketShareAnalyzer() {
                   </div>
                   <div className="overflow-x-auto overflow-y-auto max-h-96">
                     <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b">
+                      <thead className="border-b border-border bg-card">
+                        <tr>
                           <th className="text-left p-2">#</th>
                           <th className="text-left p-2">Query</th>
                           <th className="text-right p-2">Total</th>
@@ -866,7 +866,7 @@ export default function MarketShareAnalyzer() {
                             const mentionedBrands = queryDetails?.tools?.map(tool => tool.name || tool.nombre || "").filter(Boolean) || [];
                             
                             return (
-                              <tr key={queryData.query} className="border-b hover:bg-gray-50">
+                              <tr key={queryData.query} className="border-b border-border hover:bg-card">
                                 <td className="p-2">{index + 1}</td>
                                 <td className="p-2 font-medium max-w-md">
                                   <div className="truncate" title={queryData.query}>
@@ -979,8 +979,8 @@ export default function MarketShareAnalyzer() {
                   
                   <div className="overflow-y-auto max-h-[600px]">
                     <table className="w-full text-sm">
-                      <thead className="sticky top-0 bg-white">
-                        <tr className="border-b">
+                      <thead className="sticky top-0 bg-card">
+                        <tr className="border-b border-border">
                           <th className="text-left p-2">Marca</th>
                           <th className="text-left p-2">Query</th>
                           <th className="text-left p-2">Highlights</th>
@@ -994,7 +994,7 @@ export default function MarketShareAnalyzer() {
                           .filter(([brand]) => selectedDetailBrand === "all" || brand === selectedDetailBrand)
                           .map(([brand, details]) =>
                             details.map((detail, detailIndex) => (
-                              <tr key={`${brand}-${detailIndex}`} className="border-b hover:bg-gray-50">
+                              <tr key={`${brand}-${detailIndex}`} className="border-b border-border hover:bg-card">
                                 <td className="p-2 font-medium">
                                   {brand}
                                   {brand.toLowerCase().includes("genially") && (
@@ -1063,24 +1063,24 @@ export default function MarketShareAnalyzer() {
                 <CardContent>
                   <div className="grid grid-cols-4 gap-4 mb-4">
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">{results.totalQueries}</div>
-                      <div className="text-sm text-gray-600">Total registros</div>
+                      <div className="text-2xl font-bold text-primary">{results.totalQueries}</div>
+                      <div className="text-sm text-muted-foreground">Total registros</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-green-600">{results.uniqueQueries}</div>
-                      <div className="text-sm text-gray-600">Queries únicas</div>
+                      <div className="text-2xl font-bold text-success">{results.uniqueQueries}</div>
+                      <div className="text-sm text-muted-foreground">Queries únicas</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-purple-600">
+                      <div className="text-2xl font-bold text-accent">
                         {(results.totalQueries / results.uniqueQueries).toFixed(1)}
                       </div>
-                      <div className="text-sm text-gray-600">Promedio por query</div>
+                      <div className="text-sm text-muted-foreground">Promedio por query</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-orange-600">
+                      <div className="text-2xl font-bold text-destructive">
                         {Math.max(...results.queryFrequencies.map((q) => q.count))}
                       </div>
-                      <div className="text-sm text-gray-600">Máximo repeticiones</div>
+                      <div className="text-sm text-muted-foreground">Máximo repeticiones</div>
                     </div>
                   </div>
                 </CardContent>
@@ -1093,7 +1093,7 @@ export default function MarketShareAnalyzer() {
         {!results && !loading && isAuthenticated && (
           <Card>
             <CardContent className="p-6">
-              <div className="text-center text-gray-500">No hay datos disponibles para mostrar</div>
+              <div className="text-center text-muted-foreground">No hay datos disponibles para mostrar</div>
             </CardContent>
           </Card>
         )}
