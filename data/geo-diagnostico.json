@@ -1,0 +1,56 @@
+{
+  "debilidades": [
+    {
+      "descripcion": "No aparece en directorios clave como G2, Capterra, TrustRadius o eLearningIndustry en categorías como e-learning o authoring tools, donde competidores como Articulate, Adobe Captivate o iSpring están muy bien posicionados.",
+      "prioridad": "alta"
+    },
+    {
+      "descripcion": "Falta de contenido optimizado en la web para keywords críticas del sector como 'SCORM', 'LTI', 'xAPI', 'software de simulaciones', o 'VR training tools', que sí dominan competidores como Storyline 360 o Captivate.",
+      "prioridad": "alta"
+    },
+    {
+      "descripcion": "Bajo enfoque en aspectos técnicos para instructional designers avanzados: no se destaca personalización por variables, triggers, ni simulaciones complejas como lo hace Articulate Storyline o Lectora Inspire.",
+      "prioridad": "media"
+    },
+    {
+      "descripcion": "Algunas de las páginas en el sitemap están orientadas a términos de marca y marketing genérico, pero no abordan búsquedas informacionales concretas del sector L&D como 'herramientas de microlearning' o 'crear contenido interactivo para Moodle'.",
+      "prioridad": "media"
+    },
+    {
+      "descripcion": "No se ha aprovechado el potencial SEO multilingüe con estructuras canónicas claras o hreflang adecuados en el sitemap, a pesar de tener contenido duplicado en varios idiomas.",
+      "prioridad": "baja"
+    }
+  ],
+  "estrategias_y_oportunidades": [
+    {
+      "accion": "Optimizar contenido existente y crear nuevas páginas que integren keywords clave como 'SCORM', 'xAPI', 'interactive learning simulations', 'LTI compatible content', etc.",
+      "coste": "bajo",
+      "prioridad": "alta"
+    },
+    {
+      "accion": "Dar de alta Genially en directorios relevantes como G2, Capterra, eLearningIndustry y TrustRadius en categorías de e-learning, content creation o instructional design tools.",
+      "coste": "medio",
+      "prioridad": "alta"
+    },
+    {
+      "accion": "Desarrollar casos de uso y páginas específicas para instructional designers con enfoque técnico (simulaciones, escenarios ramificados, LMS integraciones).",
+      "coste": "medio",
+      "prioridad": "media"
+    },
+    {
+      "accion": "Crear una estrategia de contenidos centrada en búsquedas informacionales como 'mejores herramientas para crear contenido interactivo', 'alternativas a Articulate', o 'cómo crear gamificación educativa'.",
+      "coste": "bajo",
+      "prioridad": "alta"
+    },
+    {
+      "accion": "Implementar hreflang y canónicas correctamente para evitar canibalización y duplicación de contenidos multilingües.",
+      "coste": "medio",
+      "prioridad": "media"
+    },
+    {
+      "accion": "Aprovechar las plantillas y ejemplos del sitemap para generar enlaces internos contextuales y clusters temáticos en torno a 'microlearning', 'gamificación', 'presentaciones educativas interactivas', etc.",
+      "coste": "bajo",
+      "prioridad": "media"
+    }
+  ]
+}

@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, Legend, ScatterChart, Scatter, ZAxis } from "recharts"
 import { Upload, BarChart3, PieChartIcon, Lock, Eye, EyeOff, FilterIcon, XCircle } from "lucide-react"
 import {
@@ -21,7 +22,20 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-import { SAMPLE_DATASET, QueryData, Tool, MarcaMencionada, GEO_DIAG_JSON } from "@/data/sample-dataset"
+import { SAMPLE_DATASET, QueryData, Tool, MarcaMencionada } from "@/data/sample-dataset"
+import geoDiagnostico from "@/data/geo-diagnostico.json"
+import SidebarMenu from "@/components/SidebarMenu"
+
+interface Debilidad {
+  descripcion: string;
+  prioridad: "alta" | "media" | "baja";
+}
+
+interface Estrategia {
+  accion: string;
+  coste: string;
+  prioridad: "alta" | "media" | "baja";
+}
 
 interface MarketShareResult {
   geniallyMarketShare: number
@@ -489,671 +503,774 @@ export default function MarketShareAnalyzer() {
 
   // Aplicación principal (solo se muestra después de autenticarse)
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[var(--background)] to-[var(--primary)] p-4" suppressHydrationWarning>
-      <div className="max-w-6xl mx-auto space-y-6" suppressHydrationWarning>
-        <div className="text-center space-y-2" suppressHydrationWarning>
-          <img src="/favicon.png" alt="Genially Logo" className="mx-auto w-10 h-10 mb-4" />
-          <h1 className="text-3xl font-bold text-foreground">Análisis GEO de Genially</h1>
-          <p className="text-muted-foreground">Analiza el market share de Genially y sus competidores en diferentes LLMs</p>
-          
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-[var(--background)] to-[var(--primary)] flex">
+      {/* Menú lateral */}
+      <SidebarMenu />
+      <main className="flex-1 p-4">
+        <div className="max-w-6xl mx-auto space-y-6" suppressHydrationWarning>
+          <div className="text-center space-y-2" suppressHydrationWarning>
+            <h1 className="text-3xl font-bold text-foreground">Análisis GEO de Genially</h1>
+            <p className="text-muted-foreground">Analiza el market share de Genially y sus competidores en diferentes LLMs</p>
+          </div>
 
-        {/* Mostrar mensaje de carga */}
-        {loading && (
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-center">Cargando datos...</div>
-            </CardContent>
-          </Card>
-        )}
+          {/* Mostrar mensaje de carga */}
+          {loading && (
+            <Card>
+              <CardContent className="p-6">
+                <div className="text-center">Cargando datos...</div>
+              </CardContent>
+            </Card>
+          )}
 
-        {/* Mostrar error si existe */}
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+          {/* Mostrar error si existe */}
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-        {/* Contenido principal */}
-        {results && !loading && (
-          <>
-            {/* Grid de 2 columnas para los gráficos principales */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Market Share de Genially */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl">Market Share de Genially</CardTitle>
-                  <CardDescription>Porcentaje de queries donde aparece mencionada Genially</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center space-y-4">
-                    <div className="text-4xl font-bold text-primary">
-                      {results.geniallyMarketShare.toFixed(1)}%
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground" suppressHydrationWarning>
-                      <div suppressHydrationWarning>
-                        <div className="font-semibold">{results.queriesWithGenially}</div>
-                        <div>Queries que mencionan a Genially</div>
+          {/* Contenido principal */}
+          {results && !loading && (
+            <>
+              {/* Grid de 2 columnas para los gráficos principales */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Market Share de Genially */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-xl">Market Share de Genially</CardTitle>
+                    <CardDescription>Porcentaje de queries donde aparece mencionada Genially</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center space-y-4">
+                      <div className="text-4xl font-bold text-primary">
+                        {results.geniallyMarketShare.toFixed(1)}%
                       </div>
-                      <div suppressHydrationWarning>
-                        <div className="font-semibold">{results.totalQueriesWithBrands}</div>
-                        <div>Número de queries que mencionan al menos una marca</div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Resumen de Distribución */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl">Resumen de Marcas</CardTitle>
-                  <CardDescription>Estadísticas generales de menciones de marcas</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4" suppressHydrationWarning>
-                    <div className="grid grid-cols-2 gap-4" suppressHydrationWarning>
-                      <div className="text-center" suppressHydrationWarning>
-                        <div className="text-2xl font-bold text-success">
-                          {results.brandDistribution.length}
+                      <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground" suppressHydrationWarning>
+                        <div suppressHydrationWarning>
+                          <div className="font-semibold">{results.queriesWithGenially}</div>
+                          <div>Queries que mencionan a Genially</div>
                         </div>
-                        <div className="text-sm text-muted-foreground">Marcas únicas</div>
-                      </div>
-                      <div className="text-center" suppressHydrationWarning>
-                        <div className="text-2xl font-bold text-primary">{results.totalBrandMentions}</div>
-                        <div className="text-sm text-muted-foreground">Total menciones</div>
+                        <div suppressHydrationWarning>
+                          <div className="font-semibold">{results.totalQueriesWithBrands}</div>
+                          <div>Número de queries que mencionan al menos una marca</div>
+                        </div>
                       </div>
                     </div>
-                    <div suppressHydrationWarning>
-                      <h4 className="font-semibold mb-2">Top 3 Marcas:</h4>
-                      <div className="space-y-1" suppressHydrationWarning>
-                        {results.brandDistribution.slice(0, 3).map((brand, index) => (
-                          <div key={brand.brand} className="flex justify-between items-center" suppressHydrationWarning>
-                            <span className="text-sm">
-                              {index + 1}. {brand.brand}
-                            </span>
-                            <Badge variant="secondary">{brand.percentage.toFixed(1)}%</Badge>
+                  </CardContent>
+                </Card>
+
+                {/* Resumen de Distribución */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-xl">Resumen de Marcas</CardTitle>
+                    <CardDescription>Estadísticas generales de menciones de marcas</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4" suppressHydrationWarning>
+                      <div className="grid grid-cols-2 gap-4" suppressHydrationWarning>
+                        <div className="text-center" suppressHydrationWarning>
+                          <div className="text-2xl font-bold text-success">
+                            {results.brandDistribution.length}
                           </div>
-                        ))}
+                          <div className="text-sm text-muted-foreground">Marcas únicas</div>
+                        </div>
+                        <div className="text-center" suppressHydrationWarning>
+                          <div className="text-2xl font-bold text-primary">{results.totalBrandMentions}</div>
+                          <div className="text-sm text-muted-foreground">Total menciones</div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Diagnóstico GEO: Debilidades y Oportunidades */}
-              <Card className="md:col-span-2">
-                <CardHeader>
-                  <CardTitle>Debilidades y Oportunidades</CardTitle>
-                  <CardDescription>Principales debilidades detectadas y oportunidades de mejora para Genially</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Tabla de Debilidades */}
-                    <div>
-                      <h4 className="font-semibold mb-2">Debilidades</h4>
-                      <div className="rounded-lg border overflow-y-auto max-h-96 bg-background">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="bg-card border-b border-border sticky top-0">
-                              <th className="text-left p-2">Debilidad</th>
-                              <th className="text-left p-2">Prioridad</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {GEO_DIAG_JSON.debilidades
-                              .slice()
-                              .sort((a, b) => {
-                                const prioridadOrden: { [key in 'alta' | 'media' | 'baja']: number } = { alta: 0, media: 1, baja: 2 };
-                                const pa = typeof a === 'string' ? 'media' : (a.prioridad as 'alta' | 'media' | 'baja') ?? 'media';
-                                const pb = typeof b === 'string' ? 'media' : (b.prioridad as 'alta' | 'media' | 'baja') ?? 'media';
-                                return prioridadOrden[pa] - prioridadOrden[pb];
-                              })
-                              .map((deb, idx) => {
-                                const isObj = typeof deb === 'object' && deb !== null && 'descripcion' in deb;
-                                return (
-                                  <tr key={idx} className="border-b border-border last:border-b-0">
-                                    <td className="p-2">{isObj ? deb.descripcion : deb}</td>
-                                    <td className="p-2 capitalize font-semibold">
-                                      {isObj && deb.prioridad === 'alta' && <span className="text-green-700 bg-green-100 rounded px-2 py-1 mr-1">Alta</span>}
-                                      {isObj && deb.prioridad === 'media' && <span className="text-yellow-700 bg-yellow-100 rounded px-2 py-1 mr-1">Media</span>}
-                                      {isObj && deb.prioridad === 'baja' && <span className="text-gray-700 bg-gray-100 rounded px-2 py-1 mr-1">Baja</span>}
-                                      {!isObj && <span className="text-gray-500">-</span>}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                    {/* Tabla de Oportunidades */}
-                    <div>
-                      <h4 className="font-semibold mb-2">Oportunidades y Estrategias</h4>
-                      <div className="rounded-lg border overflow-y-auto max-h-96 bg-background">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="bg-card border-b border-border sticky top-0">
-                              <th className="text-left p-2">Acción</th>
-                              <th className="text-left p-2">Coste</th>
-                              <th className="text-left p-2">Prioridad</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {GEO_DIAG_JSON.estrategias_y_oportunidades
-                              .slice()
-                              .sort((a, b) => {
-                                const prioridadOrden: { [key in 'alta' | 'media' | 'baja']: number } = { alta: 0, media: 1, baja: 2 };
-                                return prioridadOrden[a.prioridad as 'alta' | 'media' | 'baja'] - prioridadOrden[b.prioridad as 'alta' | 'media' | 'baja'];
-                              })
-                              .map((op, idx) => (
-                                <tr key={idx} className="border-b border-border last:border-b-0">
-                                  <td className="p-2">{op.accion}</td>
-                                  <td className="p-2 capitalize">{op.coste}</td>
-                                  <td className="p-2 capitalize font-semibold">
-                                    {op.prioridad === 'alta' && <span className="text-green-700 bg-green-100 rounded px-2 py-1 mr-1">Alta</span>}
-                                    {op.prioridad === 'media' && <span className="text-yellow-700 bg-yellow-100 rounded px-2 py-1 mr-1">Media</span>}
-                                    {op.prioridad === 'baja' && <span className="text-gray-700 bg-gray-100 rounded px-2 py-1 mr-1">Baja</span>}
-                                  </td>
-                                </tr>
-                              ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Gráfico de Barras */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5" />
-                    Distribución de Market Share por Marca
-                  </CardTitle>
-                  <CardDescription>Porcentaje de menciones de cada marca</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={results.brandDistribution.slice(0, 10)}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis 
-                          dataKey="brand" 
-                          angle={-45} 
-                          textAnchor="end" 
-                          height={80} 
-                          fontSize={12}
-                          interval={0}
-                        />
-                        <YAxis />
-                        <Tooltip
-                          formatter={(value: number) => [`${value.toFixed(1)}%`, "Porcentaje"]}
-                          labelFormatter={(label) => `Marca: ${label}`}
-                        />
-                        <Bar dataKey="percentage" fill="#3B82F6" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Gráfico Circular */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <PieChartIcon className="w-5 h-5" />
-                    Distribución Visual de Marcas (Top 10)
-                  </CardTitle>
-                  <CardDescription>Representación visual del market share</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={results.brandDistribution.slice(0, 10)}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ brand, percentage }) => `${brand}: ${percentage.toFixed(1)}%`}
-                          outerRadius={80}
-                          innerRadius={40}
-                          fill="#8884d8"
-                          dataKey="percentage"
-                        >
-                          {results.brandDistribution.slice(0, 10).map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <div suppressHydrationWarning>
+                        <h4 className="font-semibold mb-2">Top 3 Marcas:</h4>
+                        <div className="space-y-1" suppressHydrationWarning>
+                          {results.brandDistribution.slice(0, 3).map((brand, index) => (
+                            <div key={brand.brand} className="flex justify-between items-center" suppressHydrationWarning>
+                              <span className="text-sm">
+                                {index + 1}. {brand.brand}
+                              </span>
+                              <Badge variant="secondary">{brand.percentage.toFixed(1)}%</Badge>
+                            </div>
                           ))}
-                        </Pie>
-                        <Tooltip 
-                          formatter={(value: number, name: string, props: any) => [
-                            `${value.toFixed(1)}%`,
-                            props.payload.brand
-                          ]}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-              {/* Distribución Detallada de Marcas */}
-              <Card className="md:col-span-1">
+                {/* Diagnóstico GEO: Debilidades y Oportunidades */}
+                <Card className="md:col-span-2">
+                  <CardHeader>
+                    <CardTitle>Debilidades y Oportunidades</CardTitle>
+                    <CardDescription>Principales debilidades detectadas y oportunidades de mejora para Genially</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Tabla de Debilidades */}
+                      <div>
+                        <h4 className="font-semibold mb-2">Debilidades</h4>
+                        <div className="rounded-lg border overflow-y-auto max-h-96 bg-background">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="bg-card border-b border-border sticky top-0">
+                                <th className="text-left p-2">Debilidad</th>
+                                <th className="text-left p-2">Prioridad</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {geoDiagnostico.debilidades
+                                .slice()
+                                .sort((a, b) => {
+                                  const prioridadOrden: { [key in 'alta' | 'media' | 'baja']: number } = { alta: 0, media: 1, baja: 2 };
+                                  return prioridadOrden[(a.prioridad as 'alta' | 'media' | 'baja')] - prioridadOrden[(b.prioridad as 'alta' | 'media' | 'baja')];
+                                })
+                                .map((deb, idx) => {
+                                  const debilidad = deb as Debilidad;
+                                  return (
+                                    <tr key={idx} className="border-b border-border last:border-b-0">
+                                      <td className="p-2">{debilidad.descripcion}</td>
+                                      <td className="p-2 capitalize font-semibold">
+                                        {debilidad.prioridad === 'alta' && <span className="text-green-700 bg-green-100 rounded px-2 py-1 mr-1">Alta</span>}
+                                        {debilidad.prioridad === 'media' && <span className="text-yellow-700 bg-yellow-100 rounded px-2 py-1 mr-1">Media</span>}
+                                        {debilidad.prioridad === 'baja' && <span className="text-gray-700 bg-gray-100 rounded px-2 py-1 mr-1">Baja</span>}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                      {/* Tabla de Oportunidades */}
+                      <div>
+                        <h4 className="font-semibold mb-2">Oportunidades y Estrategias</h4>
+                        <div className="rounded-lg border overflow-y-auto max-h-96 bg-background">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="bg-card border-b border-border sticky top-0">
+                                <th className="text-left p-2">Acción</th>
+                                <th className="text-left p-2">Coste</th>
+                                <th className="text-left p-2">Prioridad</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {geoDiagnostico.estrategias_y_oportunidades
+                                .slice()
+                                .sort((a, b) => {
+                                  const prioridadOrden: { [key in 'alta' | 'media' | 'baja']: number } = { alta: 0, media: 1, baja: 2 };
+                                  return prioridadOrden[(a.prioridad as 'alta' | 'media' | 'baja')] - prioridadOrden[(b.prioridad as 'alta' | 'media' | 'baja')];
+                                })
+                                .map((op, idx) => {
+                                  const estrategia = op as Estrategia;
+                                  return (
+                                    <tr key={idx} className="border-b border-border last:border-b-0">
+                                      <td className="p-2">{estrategia.accion}</td>
+                                      <td className="p-2 capitalize">{estrategia.coste}</td>
+                                      <td className="p-2 capitalize font-semibold">
+                                        {estrategia.prioridad === 'alta' && <span className="text-green-700 bg-green-100 rounded px-2 py-1 mr-1">Alta</span>}
+                                        {estrategia.prioridad === 'media' && <span className="text-yellow-700 bg-yellow-100 rounded px-2 py-1 mr-1">Media</span>}
+                                        {estrategia.prioridad === 'baja' && <span className="text-gray-700 bg-gray-100 rounded px-2 py-1 mr-1">Baja</span>}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Gráfico de Barras */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5" />
+                      Distribución de Market Share por Marca
+                    </CardTitle>
+                    <CardDescription>Porcentaje de menciones de cada marca</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={results.brandDistribution.slice(0, 10)}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis 
+                            dataKey="brand" 
+                            angle={-45} 
+                            textAnchor="end" 
+                            height={80} 
+                            fontSize={12}
+                            interval={0}
+                          />
+                          <YAxis />
+                          <Tooltip
+                            formatter={(value: number) => [`${value.toFixed(1)}%`, "Porcentaje"]}
+                            labelFormatter={(label) => `Marca: ${label}`}
+                          />
+                          <Bar dataKey="percentage" fill="#3B82F6" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Gráfico Circular */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <PieChartIcon className="w-5 h-5" />
+                      Distribución Visual de Marcas (Top 10)
+                    </CardTitle>
+                    <CardDescription>Representación visual del market share</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={results.brandDistribution.slice(0, 10)}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ brand, percentage }) => `${brand}: ${percentage.toFixed(1)}%`}
+                            outerRadius={80}
+                            innerRadius={40}
+                            fill="#8884d8"
+                            dataKey="percentage"
+                          >
+                            {results.brandDistribution.slice(0, 10).map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            formatter={(value: number, name: string, props: any) => [
+                              `${value.toFixed(1)}%`,
+                              props.payload.brand
+                            ]}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Distribución Detallada de Marcas */}
+                <Card className="md:col-span-1">
+                  <CardHeader>
+                    <CardTitle>Distribución Detallada de Marcas</CardTitle>
+                    <CardDescription>Lista completa de todas las marcas mencionadas</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Limitar altura y permitir scroll vertical */}
+                    <div className="overflow-y-auto max-h-96">
+                      <table className="w-full text-sm">
+                        <thead className="border-b border-border bg-card">
+                          <tr>
+                            <th className="text-left p-2">#</th>
+                            <th className="text-left p-2">Marca</th>
+                            <th className="text-right p-2">Menciones</th>
+                            <th className="text-right p-2">Porcentaje</th>
+                            <th className="text-right p-2">Sentimiento</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {results.brandDistribution.map((brand, index) => (
+                            <tr key={brand.brand} className="border-b border-border hover:bg-card">
+                              <td className="p-2">{index + 1}</td>
+                              <td className="p-2 font-medium">
+                                {brand.brand}
+                                {brand.brand.toLowerCase().includes("genially") && (
+                                  <Badge className="ml-2" variant="default">
+                                    ⭐
+                                  </Badge>
+                                )}
+                              </td>
+                              <td className="p-2 text-right">{brand.count}</td>
+                              <td className="p-2 text-right">{brand.percentage.toFixed(2)}%</td>
+                              <td className="p-2 text-right">{brand.avgSentiment.toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Gráfico de dispersión Market Share vs. Sentimiento (Top 10) */}
+                <Card className="md:col-span-1">
+                  <CardHeader>
+                    <CardTitle>Market Share vs. Sentimiento (Top 10)</CardTitle>
+                    <CardDescription>Relación entre presencia en el mercado y sentimiento para las 10 marcas mejor valoradas</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[450px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ScatterChart
+                          margin={{
+                            top: 20,
+                            right: 20,
+                            bottom: 20,
+                            left: 20,
+                          }}
+                        >
+                          <CartesianGrid />
+                          <XAxis 
+                            type="number" 
+                            dataKey="percentage" 
+                            name="Market Share" 
+                            unit="%" 
+                            domain={[0, 'dataMax + 5']}
+                            label={{ value: 'Market Share (%)', position: 'bottom' }}
+                          />
+                          <YAxis 
+                            type="number" 
+                            dataKey="avgSentiment" 
+                            name="Sentimiento" 
+                            domain={[0.6, 1]}
+                            label={{ value: 'Sentimiento', angle: -90, position: 'left' }}
+                          />
+                          <ZAxis 
+                            type="number" 
+                            dataKey="count" 
+                            range={[400, 1200]} 
+                            name="Menciones"
+                          />
+                          <Tooltip 
+                            cursor={{ strokeDasharray: '3 3' }}
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                const data = payload[0].payload;
+                                return (
+                                  <div className="bg-white p-2 border rounded shadow-sm">
+                                    <p className="font-semibold">{data.brand}</p>
+                                    <p>Market Share: {data.percentage.toFixed(1)}%</p>
+                                    <p>Sentimiento: {data.avgSentiment.toFixed(2)}</p>
+                                    <p>Menciones: {data.count}</p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <Scatter
+                            name="Marcas"
+                            data={results.brandDistribution
+                              .map(brand => ({
+                                ...brand,
+                                avgSentiment: brand.avgSentiment || 0
+                              }))
+                              .sort((a, b) => b.count - a.count)
+                              .slice(0, 10)
+                            }
+                            fill="#8884d8"
+                          >
+                            {results.brandDistribution
+                              .sort((a, b) => b.count - a.count)
+                              .slice(0, 10)
+                              .map((entry, index) => (
+                                <Cell 
+                                  key={`cell-${index}`} 
+                                  fill={COLORS[index % COLORS.length]} 
+                                  fillOpacity={0.6}
+                                />
+                              ))
+                            }
+                          </Scatter>
+                        </ScatterChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Secciones que deben ir en una sola columna (full width) */}
+              {/* Análisis de Queries */}
+              <Card className="md:col-span-2 mt-6">
                 <CardHeader>
-                  <CardTitle>Distribución Detallada de Marcas</CardTitle>
-                  <CardDescription>Lista completa de todas las marcas mencionadas</CardDescription>
+                  <CardTitle>Análisis de Queries</CardTitle>
+                  <CardDescription>Frecuencia de cada query y su relación con marcas</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {/* Limitar altura y permitir scroll vertical */}
-                  <div className="overflow-y-auto max-h-96">
+                  <div className="mb-4">
+                    <Select 
+                      value={selectedDetailBrand} 
+                      onValueChange={setSelectedDetailBrand}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Filtrar por marca" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectLabel>Marcas</SelectLabel>
+                          <SelectItem value="all">Todas las marcas</SelectItem>
+                          {results?.brandDistribution.map((brand: { brand: string }) => (
+                            <SelectItem key={brand.brand} value={brand.brand}>
+                              {brand.brand}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="overflow-x-auto overflow-y-auto max-h-96">
                     <table className="w-full text-sm">
                       <thead className="border-b border-border bg-card">
                         <tr>
                           <th className="text-left p-2">#</th>
-                          <th className="text-left p-2">Marca</th>
-                          <th className="text-right p-2">Menciones</th>
-                          <th className="text-right p-2">Porcentaje</th>
-                          <th className="text-right p-2">Sentimiento</th>
+                          <th className="text-left p-2">Query</th>
+                          <th className="text-right p-2">Total</th>
+                          <th className="text-right p-2">Con Marcas</th>
+                          <th className="text-right p-2">Con Genially</th>
+                          <th className="text-left p-2">Marcas Mencionadas</th>
+                          <th className="text-center p-2">Sources</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {results.brandDistribution.map((brand, index) => (
-                          <tr key={brand.brand} className="border-b border-border hover:bg-card">
-                            <td className="p-2">{index + 1}</td>
-                            <td className="p-2 font-medium">
-                              {brand.brand}
-                              {brand.brand.toLowerCase().includes("genially") && (
-                                <Badge className="ml-2" variant="default">
-                                  ⭐
-                                </Badge>
-                              )}
-                            </td>
-                            <td className="p-2 text-right">{brand.count}</td>
-                            <td className="p-2 text-right">{brand.percentage.toFixed(2)}%</td>
-                            <td className="p-2 text-right">{brand.avgSentiment.toFixed(2)}</td>
-                          </tr>
-                        ))}
+                        {results?.queryFrequencies
+                          .filter(queryData => {
+                            if (selectedDetailBrand === "all") return true;
+                            // Filtrar por la marca seleccionada
+                            const queryDetails = results.rawData.find(q => q.query === queryData.query);
+                            return queryDetails?.tools?.some(tool => 
+                              (tool.name || tool.nombre || "").toLowerCase() === selectedDetailBrand.toLowerCase()
+                            );
+                          })
+                          .map((queryData, index) => {
+                            // Obtener las marcas mencionadas en esta query
+                            const queryDetails = results.rawData.find(q => q.query === queryData.query);
+                            const mentionedBrands = queryDetails?.tools?.map(tool => tool.name || tool.nombre || "").filter(Boolean) || [];
+                            // Obtener los sources únicos válidos (enlaces http/https)
+                            const sources: string[] = (queryDetails?.tools || [])
+                              .flatMap(tool => tool.sources || [])
+                              .filter((v, i, arr) => arr.indexOf(v) === i && /^https?:\/\//.test(v));
+                            return (
+                              <tr key={queryData.query} className="border-b border-border hover:bg-card">
+                                <td className="p-2">{index + 1}</td>
+                                <td className="p-2 font-medium max-w-md">
+                                  <div className="truncate" title={queryData.query}>
+                                    {queryData.query}
+                                  </div>
+                                </td>
+                                <td className="p-2 text-right">{queryData.count}</td>
+                                <td className="p-2 text-right">
+                                  {queryData.withBrands > 0 ? (
+                                    <Badge variant="secondary">{queryData.withBrands}</Badge>
+                                  ) : (
+                                    <span className="text-gray-400">0</span>
+                                  )}
+                                </td>
+                                <td className="p-2 text-right">
+                                  {queryData.withGenially > 0 ? (
+                                    <Badge className="bg-blue-100 text-blue-800">{queryData.withGenially}</Badge>
+                                  ) : (
+                                    <span className="text-gray-400">0</span>
+                                  )}
+                                </td>
+                                <td className="p-2">
+                                  <div className="flex flex-wrap gap-1">
+                                    {mentionedBrands.map((brand, idx) => (
+                                      <Badge 
+                                        key={idx}
+                                        variant={brand.toLowerCase().includes("genially") ? "default" : "secondary"}
+                                      >
+                                        {brand}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </td>
+                                <td className="p-2 text-center">
+                                  {sources.length > 0 ? (
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <button className="px-2 py-1 rounded bg-accent text-primary font-semibold text-xs hover:bg-primary/10 focus:outline-none">
+                                          {sources.length}
+                                        </button>
+                                      </PopoverTrigger>
+                                      <PopoverContent align="center" className="w-64 p-2">
+                                        <ul className="space-y-1">
+                                          {sources.map((src, i) => {
+                                            let domain = "";
+                                            try {
+                                              domain = new URL(src).hostname.replace(/^www\./, "");
+                                            } catch {}
+                                            return (
+                                              <li key={i}>
+                                                <a
+                                                  href={src}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="underline text-xs text-blue-700 hover:text-blue-900 break-all"
+                                                >
+                                                  {domain || src}
+                                                </a>
+                                              </li>
+                                            );
+                                          })}
+                                        </ul>
+                                      </PopoverContent>
+                                    </Popover>
+                                  ) : (
+                                    <span className="text-gray-400 text-xs">0</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
                       </tbody>
                     </table>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Gráfico de dispersión Market Share vs. Sentimiento (Top 10) */}
-              <Card className="md:col-span-1">
-                <CardHeader>
-                  <CardTitle>Market Share vs. Sentimiento (Top 10)</CardTitle>
-                  <CardDescription>Relación entre presencia en el mercado y sentimiento para las 10 marcas mejor valoradas</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[450px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <ScatterChart
-                        margin={{
-                          top: 20,
-                          right: 20,
-                          bottom: 20,
-                          left: 20,
-                        }}
-                      >
-                        <CartesianGrid />
-                        <XAxis 
-                          type="number" 
-                          dataKey="percentage" 
-                          name="Market Share" 
-                          unit="%" 
-                          domain={[0, 'dataMax + 5']}
-                          label={{ value: 'Market Share (%)', position: 'bottom' }}
-                        />
-                        <YAxis 
-                          type="number" 
-                          dataKey="avgSentiment" 
-                          name="Sentimiento" 
-                          domain={[0.6, 1]}
-                          label={{ value: 'Sentimiento', angle: -90, position: 'left' }}
-                        />
-                        <ZAxis 
-                          type="number" 
-                          dataKey="count" 
-                          range={[400, 1200]} 
-                          name="Menciones"
-                        />
-                        <Tooltip 
-                          cursor={{ strokeDasharray: '3 3' }}
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              const data = payload[0].payload;
-                              return (
-                                <div className="bg-white p-2 border rounded shadow-sm">
-                                  <p className="font-semibold">{data.brand}</p>
-                                  <p>Market Share: {data.percentage.toFixed(1)}%</p>
-                                  <p>Sentimiento: {data.avgSentiment.toFixed(2)}</p>
-                                  <p>Menciones: {data.count}</p>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Scatter
-                          name="Marcas"
-                          data={results.brandDistribution
-                            .map(brand => ({
-                              ...brand,
-                              avgSentiment: brand.avgSentiment || 0
-                            }))
-                            .sort((a, b) => b.count - a.count)
-                            .slice(0, 10)
-                          }
-                          fill="#8884d8"
-                        >
-                          {results.brandDistribution
-                            .sort((a, b) => b.count - a.count)
-                            .slice(0, 10)
-                            .map((entry, index) => (
-                              <Cell 
-                                key={`cell-${index}`} 
-                                fill={COLORS[index % COLORS.length]} 
-                                fillOpacity={0.6}
-                              />
-                            ))
-                          }
-                        </Scatter>
-                      </ScatterChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Secciones que deben ir en una sola columna (full width) */}
-            {/* Análisis de Queries */}
-            <Card className="md:col-span-2 mt-6">
-              <CardHeader>
-                <CardTitle>Análisis de Queries</CardTitle>
-                <CardDescription>Frecuencia de cada query y su relación con marcas</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="mb-4">
-                  <Select 
-                    value={selectedDetailBrand} 
-                    onValueChange={setSelectedDetailBrand}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Filtrar por marca" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectLabel>Marcas</SelectLabel>
-                        <SelectItem value="all">Todas las marcas</SelectItem>
-                        {results?.brandDistribution.map((brand: { brand: string }) => (
-                          <SelectItem key={brand.brand} value={brand.brand}>
-                            {brand.brand}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="overflow-x-auto overflow-y-auto max-h-96">
-                  <table className="w-full text-sm">
-                    <thead className="border-b border-border bg-card">
-                      <tr>
-                        <th className="text-left p-2">#</th>
-                        <th className="text-left p-2">Query</th>
-                        <th className="text-right p-2">Total</th>
-                        <th className="text-right p-2">Con Marcas</th>
-                        <th className="text-right p-2">Con Genially</th>
-                        <th className="text-left p-2">Marcas Mencionadas</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {results?.queryFrequencies
-                        .filter(queryData => {
-                          if (selectedDetailBrand === "all") return true;
-                          // Filtrar por la marca seleccionada
-                          const queryDetails = results.rawData.find(q => q.query === queryData.query);
-                          return queryDetails?.tools?.some(tool => 
-                            (tool.name || tool.nombre || "").toLowerCase() === selectedDetailBrand.toLowerCase()
-                          );
-                        })
-                        .map((queryData, index) => {
-                          // Obtener las marcas mencionadas en esta query
-                          const queryDetails = results.rawData.find(q => q.query === queryData.query);
-                          const mentionedBrands = queryDetails?.tools?.map(tool => tool.name || tool.nombre || "").filter(Boolean) || [];
-                          
-                          return (
-                            <tr key={queryData.query} className="border-b border-border hover:bg-card">
-                              <td className="p-2">{index + 1}</td>
-                              <td className="p-2 font-medium max-w-md">
-                                <div className="truncate" title={queryData.query}>
-                                  {queryData.query}
-                                </div>
-                              </td>
-                              <td className="p-2 text-right">{queryData.count}</td>
-                              <td className="p-2 text-right">
-                                {queryData.withBrands > 0 ? (
-                                  <Badge variant="secondary">{queryData.withBrands}</Badge>
-                                ) : (
-                                  <span className="text-gray-400">0</span>
-                                )}
-                              </td>
-                              <td className="p-2 text-right">
-                                {queryData.withGenially > 0 ? (
-                                  <Badge className="bg-blue-100 text-blue-800">{queryData.withGenially}</Badge>
-                                ) : (
-                                  <span className="text-gray-400">0</span>
-                                )}
-                              </td>
-                              <td className="p-2">
-                                <div className="flex flex-wrap gap-1">
-                                  {mentionedBrands.map((brand, idx) => (
-                                    <Badge 
-                                      key={idx}
-                                      variant={brand.toLowerCase().includes("genially") ? "default" : "secondary"}
-                                    >
-                                      {brand}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Gráfico de Evolución Semanal - full width */}
-            {results && weeklyEvolutionData.length > 0 && (
-              <Card className="md:col-span-2 mt-6">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5" />
-                    Evolución semanal de menciones por marca (Top 10)
-                  </CardTitle>
-                  <CardDescription>
-                    Número de menciones semanales para las 10 marcas más mencionadas
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-96">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={weeklyEvolutionData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="week" />
-                        <YAxis allowDecimals={false} />
-                        <Tooltip />
-                        <Legend />
-                        {results.brandDistribution.slice(0, 10).map((brand, idx) => (
-                          <Line
-                            key={brand.brand}
-                            type="monotone"
-                            dataKey={brand.brand}
-                            stroke={COLORS[idx % COLORS.length]}
-                            strokeWidth={2}
-                            dot={false}
-                          />
-                        ))}
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Análisis Detallado por Marca - full width */}
-            {results && (
-              <Card className="md:col-span-2 mt-6">
-                <CardHeader>
-                  <CardTitle>Análisis Detallado por Marca</CardTitle>
-                  <CardDescription>Detalles completos de cada marca por query</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="mb-4">
-                    <Select value={selectedDetailBrand} onValueChange={setSelectedDetailBrand}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Selecciona una marca para filtrar" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          <SelectLabel>Marcas</SelectLabel>
-                          <SelectItem value="all">Todas las marcas</SelectItem>
-                          {Object.keys(getBrandDetails(results.rawData))
-                            .sort()
-                            .map((brand) => (
-                              <SelectItem key={brand} value={brand}>
-                                {brand}
-                              </SelectItem>
-                            ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="overflow-y-auto max-h-[600px]">
-                    {Object.keys(getBrandDetails(results.rawData)).length === 0 ? (
-                      <div className="text-center text-muted-foreground py-8">No hay datos para esta query</div>
-                    ) : (
+              {/* Tabla de sources globales */}
+              {results && (
+                <Card className="md:col-span-2 mt-6">
+                  <CardHeader>
+                    <CardTitle>Sources globales</CardTitle>
+                    <CardDescription>Listado de todos los enlaces (sources) y cuántas veces aparecen en las queries</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto max-h-[350px] overflow-y-auto">
                       <table className="w-full text-sm">
-                        <thead className="sticky top-0 bg-card">
-                          <tr className="border-b border-border">
-                            <th className="text-left p-2">Marca</th>
-                            <th className="text-left p-2">Query</th>
-                            <th className="text-left p-2">Highlights</th>
-                            <th className="text-left p-2">Pros</th>
-                            <th className="text-left p-2">Contras</th>
-                            <th className="text-right p-2">Sentimiento</th>
+                        <thead className="border-b border-border bg-card">
+                          <tr>
+                            <th className="text-left p-2">#</th>
+                            <th className="text-left p-2">Source (enlace)</th>
+                            <th className="text-right p-2">Veces en queries</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {Object.entries(getBrandDetails(results.rawData))
-                            .filter(([brand]) => selectedDetailBrand === "all" || brand === selectedDetailBrand)
-                            .map(([brand, details]) =>
-                              details.map((detail, detailIndex) => (
-                                <tr key={`${brand}-${detailIndex}`} className="border-b border-border hover:bg-card">
-                                  <td className="p-2 font-medium">
-                                    {brand}
-                                    {brand.toLowerCase().includes("genially") && (
-                                      <Badge className="ml-2" variant="default">
-                                        ⭐
-                                      </Badge>
-                                    )}
-                                  </td>
-                                  <td className="p-2 max-w-[200px]">
-                                    <div className="truncate" title={detail.query}>
-                                      {detail.query}
-                                    </div>
-                                  </td>
-                                  <td className="p-2 max-w-[300px]">
-                                    <ul className="list-disc list-inside">
-                                      {detail.highlights.map((highlight, idx) => (
-                                        <li key={idx} className="whitespace-normal break-words" title={highlight}>
-                                          {highlight}
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </td>
-                                  <td className="p-2 max-w-[300px]">
-                                    <ul className="list-disc list-inside">
-                                      {detail.pros.map((pro, idx) => (
-                                        <li key={idx} className="whitespace-normal break-words" title={pro}>
-                                          {pro}
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </td>
-                                  <td className="p-2 max-w-[300px]">
-                                    <ul className="list-disc list-inside">
-                                      {detail.cons.map((con, idx) => (
-                                        <li key={idx} className="whitespace-normal break-words" title={con}>
-                                          {con}
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </td>
-                                  <td className="p-2 text-right">
-                                    <Badge 
-                                      variant={detail.sentimiento >= 0.8 ? "default" : 
-                                              detail.sentimiento >= 0.6 ? "secondary" : "destructive"}
+                          {(() => {
+                            // Recolectar todos los sources válidos de todas las queries
+                            const allSources: string[] = results.rawData
+                              .flatMap(q => (q.tools || []).flatMap(tool => tool.sources || []))
+                              .filter(src => /^https?:\/\//.test(src));
+                            // Contar ocurrencias
+                            const sourceCount: Record<string, number> = {};
+                            allSources.forEach(src => {
+                              sourceCount[src] = (sourceCount[src] || 0) + 1;
+                            });
+                            // Ordenar por número de ocurrencias descendente
+                            const sortedSources = Object.entries(sourceCount).sort((a, b) => b[1] - a[1]);
+                            return sortedSources.map(([src, count], idx) => {
+                              let domain = "";
+                              try {
+                                domain = new URL(src).hostname.replace(/^www\./, "");
+                              } catch {}
+                              return (
+                                <tr key={src} className="border-b border-border hover:bg-card">
+                                  <td className="p-2">{idx + 1}</td>
+                                  <td className="p-2">
+                                    <a
+                                      href={src}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="underline text-xs text-blue-700 hover:text-blue-900 break-all"
                                     >
-                                      {detail.sentimiento.toFixed(2)}
-                                    </Badge>
+                                      {domain || src}
+                                    </a>
                                   </td>
+                                  <td className="p-2 text-right font-semibold">{count}</td>
                                 </tr>
-                              ))
-                            )}
+                              );
+                            });
+                          })()}
                         </tbody>
                       </table>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
-            {/* Estadísticas de Queries - full width */}
-            {results && (
-              <Card className="md:col-span-2 mt-6">
-                <CardHeader>
-                  <CardTitle className="text-xl">Estadísticas & QA de Queries</CardTitle>
-                  <CardDescription>Información sobre las consultas realizadas</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-4 gap-4 mb-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-primary">{results.totalQueries}</div>
-                      <div className="text-sm text-muted-foreground">Total registros</div>
+
+              {/* Gráfico de Evolución Semanal - full width */}
+              {results && weeklyEvolutionData.length > 0 && (
+                <Card className="md:col-span-2 mt-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5" />
+                      Evolución semanal de menciones por marca (Top 10)
+                    </CardTitle>
+                    <CardDescription>
+                      Número de menciones semanales para las 10 marcas más mencionadas
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-96">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={weeklyEvolutionData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="week" />
+                          <YAxis allowDecimals={false} />
+                          <Tooltip />
+                          <Legend />
+                          {results.brandDistribution.slice(0, 10).map((brand, idx) => (
+                            <Line
+                              key={brand.brand}
+                              type="monotone"
+                              dataKey={brand.brand}
+                              stroke={COLORS[idx % COLORS.length]}
+                              strokeWidth={2}
+                              dot={false}
+                            />
+                          ))}
+                        </LineChart>
+                      </ResponsiveContainer>
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-success">{results.uniqueQueries}</div>
-                      <div className="text-sm text-muted-foreground">Queries únicas</div>
+                  </CardContent>
+                </Card>
+              )}
+
+              
+              {/* Análisis Detallado por Marca - full width */}
+              {results && (
+                <Card className="md:col-span-2 mt-6">
+                  <CardHeader>
+                    <CardTitle>Análisis Detallado por Marca</CardTitle>
+                    <CardDescription>Detalles completos de cada marca por query</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="mb-4">
+                      <Select value={selectedDetailBrand} onValueChange={setSelectedDetailBrand}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Selecciona una marca para filtrar" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            <SelectLabel>Marcas</SelectLabel>
+                            <SelectItem value="all">Todas las marcas</SelectItem>
+                            {Object.keys(getBrandDetails(results.rawData))
+                              .sort()
+                              .map((brand) => (
+                                <SelectItem key={brand} value={brand}>
+                                  {brand}
+                                </SelectItem>
+                              ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-accent">
-                        {(results.totalQueries / results.uniqueQueries).toFixed(1)}
+                    <div className="overflow-y-auto max-h-[600px]">
+                      {Object.keys(getBrandDetails(results.rawData)).length === 0 ? (
+                        <div className="text-center text-muted-foreground py-8">No hay datos para esta query</div>
+                      ) : (
+                        <table className="w-full text-sm">
+                          <thead className="sticky top-0 bg-card">
+                            <tr className="border-b border-border">
+                              <th className="text-left p-2">Marca</th>
+                              <th className="text-left p-2">Query</th>
+                              <th className="text-left p-2">Highlights</th>
+                              <th className="text-left p-2">Pros</th>
+                              <th className="text-left p-2">Contras</th>
+                              <th className="text-right p-2">Sentimiento</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {Object.entries(getBrandDetails(results.rawData))
+                              .filter(([brand]) => selectedDetailBrand === "all" || brand === selectedDetailBrand)
+                              .map(([brand, details]) =>
+                                details.map((detail, detailIndex) => (
+                                  <tr key={`${brand}-${detailIndex}`} className="border-b border-border hover:bg-card">
+                                    <td className="p-2 font-medium">
+                                      {brand}
+                                      {brand.toLowerCase().includes("genially") && (
+                                        <Badge className="ml-2" variant="default">
+                                          ⭐
+                                        </Badge>
+                                      )}
+                                    </td>
+                                    <td className="p-2 max-w-[200px]">
+                                      <div className="truncate" title={detail.query}>
+                                        {detail.query}
+                                      </div>
+                                    </td>
+                                    <td className="p-2 max-w-[300px]">
+                                      <ul className="list-disc list-inside">
+                                        {detail.highlights.map((highlight, idx) => (
+                                          <li key={idx} className="whitespace-normal break-words" title={highlight}>
+                                            {highlight}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </td>
+                                    <td className="p-2 max-w-[300px]">
+                                      <ul className="list-disc list-inside">
+                                        {detail.pros.map((pro, idx) => (
+                                          <li key={idx} className="whitespace-normal break-words" title={pro}>
+                                            {pro}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </td>
+                                    <td className="p-2 max-w-[300px]">
+                                      <ul className="list-disc list-inside">
+                                        {detail.cons.map((con, idx) => (
+                                          <li key={idx} className="whitespace-normal break-words" title={con}>
+                                            {con}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </td>
+                                    <td className="p-2 text-right">
+                                      <Badge 
+                                        variant={detail.sentimiento >= 0.8 ? "default" : 
+                                                detail.sentimiento >= 0.6 ? "secondary" : "destructive"}
+                                      >
+                                        {detail.sentimiento.toFixed(2)}
+                                      </Badge>
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Estadísticas de Queries - full width */}
+              {results && (
+                <Card className="md:col-span-2 mt-6">
+                  <CardHeader>
+                    <CardTitle className="text-xl">Estadísticas & QA de Queries</CardTitle>
+                    <CardDescription>Información sobre las consultas realizadas</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-4 gap-4 mb-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-primary">{results.totalQueries}</div>
+                        <div className="text-sm text-muted-foreground">Total registros</div>
                       </div>
-                      <div className="text-sm text-muted-foreground">Promedio por query</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-destructive">
-                        {Math.max(...results.queryFrequencies.map((q) => q.count))}
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-success">{results.uniqueQueries}</div>
+                        <div className="text-sm text-muted-foreground">Queries únicas</div>
                       </div>
-                      <div className="text-sm text-muted-foreground">Máximo repeticiones</div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-accent">
+                          {(results.totalQueries / results.uniqueQueries).toFixed(1)}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Promedio por query</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-destructive">
+                          {Math.max(...results.queryFrequencies.map((q) => q.count))}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Máximo repeticiones</div>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </>
-        )}
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
 
-        
+          
 
-        
-      </div>
+          
+        </div>
+      </main>
     </div>
   )
 }
