@@ -71,25 +71,15 @@ export default function QueryFanOutPage() {
   }
 
   // Enviar chunks a OpenAI
-  async function sendChunksToOpenAI(chunks: Chunk[], apiKey: string) {
+  async function sendChunksToOpenAI(chunks: Chunk[]) {
     setAiResults([])
     const results: string[] = []
     for (const chunk of chunks) {
       const prompt = `Dado el siguiente contenido web, realiza un análisis tipo fan-out para SEO y LLMs. Devuelve la respuesta SOLO en el siguiente formato:\n\nFAN-OUT QUERIES:\n• [Pregunta 1] - Coverage: [Yes/Partial/No]\n• [Pregunta 2] - Coverage: [Yes/Partial/No]\n...\n\nCOVERAGE SCORE: [X/Y queries covered]\n\nRECOMMENDATIONS:\n• [Recomendación 1]\n• [Recomendación 2]\n...\n\nContenido a analizar:\n${chunk.heading ? `Título: ${chunk.heading}\n` : ""}${chunk.content}`
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      const res = await fetch("/api/openai-fanout", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: "gpt-3.5-turbo",
-          messages: [
-            { role: "system", content: "Eres un asistente que ayuda a analizar y categorizar contenido web." },
-            { role: "user", content: prompt }
-          ],
-          max_tokens: 500
-        })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
       })
       if (!res.ok) {
         results.push("Error de OpenAI para este chunk")
@@ -111,7 +101,7 @@ export default function QueryFanOutPage() {
       const extracted = extractSemanticChunks(html)
       setChunks(extracted)
       if (extracted.length > 0) {
-        await sendChunksToOpenAI(extracted, OPENAI_API_KEY)
+        await sendChunksToOpenAI(extracted)
       }
     } catch (e: any) {
       setError(e.message)
