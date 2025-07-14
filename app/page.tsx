@@ -449,8 +449,8 @@ export default function MarketShareAnalyzer() {
   // Pantalla de login
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[var(--background)] to-[var(--primary)] flex items-center justify-center p-4" suppressHydrationWarning>
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen bg-gradient-to-br bg-[#F9F8FC] from-[var(--background)] to-[var(--primary)] flex items-center justify-center p-4" suppressHydrationWarning>
+        <Card className="w-full max-w-md bg-[#F9F8FC] border-none shadow-none">
           <CardHeader className="text-center space-y-4">
             <img src="/favicon.png" alt="Genially Logo" className="mx-auto w-10 h-10 mb-4" />
             <div suppressHydrationWarning>
@@ -488,7 +488,7 @@ export default function MarketShareAnalyzer() {
               </Alert>
             )}
 
-            <Button onClick={handleLogin} disabled={!password.trim() || authLoading} className="w-full">
+            <Button onClick={handleLogin} disabled={!password.trim() || authLoading} className="w-full bg-[#6C29FF] rounded-full">
               {authLoading ? "Verificando..." : "Acceder"}
             </Button>
 
@@ -503,11 +503,11 @@ export default function MarketShareAnalyzer() {
 
   // Aplicación principal (solo se muestra después de autenticarse)
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[var(--background)] to-[var(--primary)] flex">
+    <div className="bg-[#F9F8FC] min-h-screen bg-gradient-to-br from-[var(--background)] to-[var(--primary)] flex">
       {/* Menú lateral */}
       <SidebarMenu />
       <main className="flex-1 p-4">
-        <div className="max-w-6xl mx-auto space-y-6" suppressHydrationWarning>
+        <div className="max-w-8xl mx-auto space-y-6" suppressHydrationWarning>
           <div className="text-center space-y-2" suppressHydrationWarning>
             <h1 className="text-3xl font-bold text-foreground">Análisis GEO de Genially</h1>
             <p className="text-muted-foreground">Analiza el market share de Genially y sus competidores en diferentes LLMs</p>
@@ -755,7 +755,7 @@ export default function MarketShareAnalyzer() {
                 </Card>
 
                 {/* Distribución Detallada de Marcas */}
-                <Card className="md:col-span-1">
+                <Card>
                   <CardHeader>
                     <CardTitle>Distribución Detallada de Marcas</CardTitle>
                     <CardDescription>Lista completa de todas las marcas mencionadas</CardDescription>
@@ -797,7 +797,7 @@ export default function MarketShareAnalyzer() {
                 </Card>
 
                 {/* Gráfico de dispersión Market Share vs. Sentimiento (Top 10) */}
-                <Card className="md:col-span-1">
+                <Card>
                   <CardHeader>
                     <CardTitle>Market Share vs. Sentimiento (Top 10)</CardTitle>
                     <CardDescription>Relación entre presencia en el mercado y sentimiento para las 10 marcas mejor valoradas</CardDescription>
@@ -883,206 +883,6 @@ export default function MarketShareAnalyzer() {
                 </Card>
               </div>
 
-              {/* Secciones que deben ir en una sola columna (full width) */}
-              {/* Análisis de Queries */}
-              <Card className="md:col-span-2 mt-6">
-                <CardHeader>
-                  <CardTitle>Análisis de Queries</CardTitle>
-                  <CardDescription>Frecuencia de cada query y su relación con marcas</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="mb-4">
-                    <Select 
-                      value={selectedDetailBrand} 
-                      onValueChange={setSelectedDetailBrand}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Filtrar por marca" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          <SelectLabel>Marcas</SelectLabel>
-                          <SelectItem value="all">Todas las marcas</SelectItem>
-                          {results?.brandDistribution.map((brand: { brand: string }) => (
-                            <SelectItem key={brand.brand} value={brand.brand}>
-                              {brand.brand}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="overflow-x-auto overflow-y-auto max-h-96">
-                    <table className="w-full text-sm">
-                      <thead className="border-b border-border bg-card">
-                        <tr>
-                          <th className="text-left p-2">#</th>
-                          <th className="text-left p-2">Query</th>
-                          <th className="text-right p-2">Total</th>
-                          <th className="text-right p-2">Con Marcas</th>
-                          <th className="text-right p-2">Con Genially</th>
-                          <th className="text-left p-2">Marcas Mencionadas</th>
-                          <th className="text-center p-2">Sources</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {results?.queryFrequencies
-                          .filter(queryData => {
-                            if (selectedDetailBrand === "all") return true;
-                            // Filtrar por la marca seleccionada
-                            const queryDetails = results.rawData.find(q => q.query === queryData.query);
-                            return queryDetails?.tools?.some(tool => 
-                              (tool.name || tool.nombre || "").toLowerCase() === selectedDetailBrand.toLowerCase()
-                            );
-                          })
-                          .map((queryData, index) => {
-                            // Obtener las marcas mencionadas en esta query
-                            const queryDetails = results.rawData.find(q => q.query === queryData.query);
-                            const mentionedBrands = queryDetails?.tools?.map(tool => tool.name || tool.nombre || "").filter(Boolean) || [];
-                            // Obtener los sources únicos válidos (enlaces http/https)
-                            const sources: string[] = (queryDetails?.tools || [])
-                              .flatMap(tool => tool.sources || [])
-                              .filter((v, i, arr) => arr.indexOf(v) === i && /^https?:\/\//.test(v));
-                            return (
-                              <tr key={queryData.query} className="border-b border-border hover:bg-card">
-                                <td className="p-2">{index + 1}</td>
-                                <td className="p-2 font-medium max-w-md">
-                                  <div className="truncate" title={queryData.query}>
-                                    {queryData.query}
-                                  </div>
-                                </td>
-                                <td className="p-2 text-right">{queryData.count}</td>
-                                <td className="p-2 text-right">
-                                  {queryData.withBrands > 0 ? (
-                                    <Badge variant="secondary">{queryData.withBrands}</Badge>
-                                  ) : (
-                                    <span className="text-gray-400">0</span>
-                                  )}
-                                </td>
-                                <td className="p-2 text-right">
-                                  {queryData.withGenially > 0 ? (
-                                    <Badge className="bg-blue-100 text-blue-800">{queryData.withGenially}</Badge>
-                                  ) : (
-                                    <span className="text-gray-400">0</span>
-                                  )}
-                                </td>
-                                <td className="p-2">
-                                  <div className="flex flex-wrap gap-1">
-                                    {mentionedBrands.map((brand, idx) => (
-                                      <Badge 
-                                        key={idx}
-                                        variant={brand.toLowerCase().includes("genially") ? "default" : "secondary"}
-                                      >
-                                        {brand}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                </td>
-                                <td className="p-2 text-center">
-                                  {sources.length > 0 ? (
-                                    <Popover>
-                                      <PopoverTrigger asChild>
-                                        <button className="px-2 py-1 rounded bg-accent text-primary font-semibold text-xs hover:bg-primary/10 focus:outline-none">
-                                          {sources.length}
-                                        </button>
-                                      </PopoverTrigger>
-                                      <PopoverContent align="center" className="w-64 p-2">
-                                        <ul className="space-y-1">
-                                          {sources.map((src, i) => {
-                                            let domain = "";
-                                            try {
-                                              domain = new URL(src).hostname.replace(/^www\./, "");
-                                            } catch {}
-                                            return (
-                                              <li key={i}>
-                                                <a
-                                                  href={src}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  className="underline text-xs text-blue-700 hover:text-blue-900 break-all"
-                                                >
-                                                  {domain || src}
-                                                </a>
-                                              </li>
-                                            );
-                                          })}
-                                        </ul>
-                                      </PopoverContent>
-                                    </Popover>
-                                  ) : (
-                                    <span className="text-gray-400 text-xs">0</span>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Tabla de sources globales */}
-              {results && (
-                <Card className="md:col-span-2 mt-6">
-                  <CardHeader>
-                    <CardTitle>Sources globales</CardTitle>
-                    <CardDescription>Listado de todos los enlaces (sources) y cuántas veces aparecen en las queries</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="overflow-x-auto max-h-[350px] overflow-y-auto">
-                      <table className="w-full text-sm">
-                        <thead className="border-b border-border bg-card">
-                          <tr>
-                            <th className="text-left p-2">#</th>
-                            <th className="text-left p-2">Source (enlace)</th>
-                            <th className="text-right p-2">Veces en queries</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(() => {
-                            // Recolectar todos los sources válidos de todas las queries
-                            const allSources: string[] = results.rawData
-                              .flatMap(q => (q.tools || []).flatMap(tool => tool.sources || []))
-                              .filter(src => /^https?:\/\//.test(src));
-                            // Contar ocurrencias
-                            const sourceCount: Record<string, number> = {};
-                            allSources.forEach(src => {
-                              sourceCount[src] = (sourceCount[src] || 0) + 1;
-                            });
-                            // Ordenar por número de ocurrencias descendente
-                            const sortedSources = Object.entries(sourceCount).sort((a, b) => b[1] - a[1]);
-                            return sortedSources.map(([src, count], idx) => {
-                              let domain = "";
-                              try {
-                                domain = new URL(src).hostname.replace(/^www\./, "");
-                              } catch {}
-                              return (
-                                <tr key={src} className="border-b border-border hover:bg-card">
-                                  <td className="p-2">{idx + 1}</td>
-                                  <td className="p-2">
-                                    <a
-                                      href={src}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="underline text-xs text-blue-700 hover:text-blue-900 break-all"
-                                    >
-                                      {domain || src}
-                                    </a>
-                                  </td>
-                                  <td className="p-2 text-right font-semibold">{count}</td>
-                                </tr>
-                              );
-                            });
-                          })()}
-                        </tbody>
-                      </table>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-
               {/* Gráfico de Evolución Semanal - full width */}
               {results && weeklyEvolutionData.length > 0 && (
                 <Card className="md:col-span-2 mt-6">
@@ -1121,149 +921,7 @@ export default function MarketShareAnalyzer() {
                 </Card>
               )}
 
-              
-              {/* Análisis Detallado por Marca - full width */}
-              {results && (
-                <Card className="md:col-span-2 mt-6">
-                  <CardHeader>
-                    <CardTitle>Análisis Detallado por Marca</CardTitle>
-                    <CardDescription>Detalles completos de cada marca por query</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="mb-4">
-                      <Select value={selectedDetailBrand} onValueChange={setSelectedDetailBrand}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Selecciona una marca para filtrar" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            <SelectLabel>Marcas</SelectLabel>
-                            <SelectItem value="all">Todas las marcas</SelectItem>
-                            {Object.keys(getBrandDetails(results.rawData))
-                              .sort()
-                              .map((brand) => (
-                                <SelectItem key={brand} value={brand}>
-                                  {brand}
-                                </SelectItem>
-                              ))}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="overflow-y-auto max-h-[600px]">
-                      {Object.keys(getBrandDetails(results.rawData)).length === 0 ? (
-                        <div className="text-center text-muted-foreground py-8">No hay datos para esta query</div>
-                      ) : (
-                        <table className="w-full text-sm">
-                          <thead className="sticky top-0 bg-card">
-                            <tr className="border-b border-border">
-                              <th className="text-left p-2">Marca</th>
-                              <th className="text-left p-2">Query</th>
-                              <th className="text-left p-2">Highlights</th>
-                              <th className="text-left p-2">Pros</th>
-                              <th className="text-left p-2">Contras</th>
-                              <th className="text-right p-2">Sentimiento</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {Object.entries(getBrandDetails(results.rawData))
-                              .filter(([brand]) => selectedDetailBrand === "all" || brand === selectedDetailBrand)
-                              .map(([brand, details]) =>
-                                details.map((detail, detailIndex) => (
-                                  <tr key={`${brand}-${detailIndex}`} className="border-b border-border hover:bg-card">
-                                    <td className="p-2 font-medium">
-                                      {brand}
-                                      {brand.toLowerCase().includes("genially") && (
-                                        <Badge className="ml-2" variant="default">
-                                          ⭐
-                                        </Badge>
-                                      )}
-                                    </td>
-                                    <td className="p-2 max-w-[200px]">
-                                      <div className="truncate" title={detail.query}>
-                                        {detail.query}
-                                      </div>
-                                    </td>
-                                    <td className="p-2 max-w-[300px]">
-                                      <ul className="list-disc list-inside">
-                                        {detail.highlights.map((highlight, idx) => (
-                                          <li key={idx} className="whitespace-normal break-words" title={highlight}>
-                                            {highlight}
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    </td>
-                                    <td className="p-2 max-w-[300px]">
-                                      <ul className="list-disc list-inside">
-                                        {detail.pros.map((pro, idx) => (
-                                          <li key={idx} className="whitespace-normal break-words" title={pro}>
-                                            {pro}
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    </td>
-                                    <td className="p-2 max-w-[300px]">
-                                      <ul className="list-disc list-inside">
-                                        {detail.cons.map((con, idx) => (
-                                          <li key={idx} className="whitespace-normal break-words" title={con}>
-                                            {con}
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    </td>
-                                    <td className="p-2 text-right">
-                                      <Badge 
-                                        variant={detail.sentimiento >= 0.8 ? "default" : 
-                                                detail.sentimiento >= 0.6 ? "secondary" : "destructive"}
-                                      >
-                                        {detail.sentimiento.toFixed(2)}
-                                      </Badge>
-                                    </td>
-                                  </tr>
-                                ))
-                              )}
-                          </tbody>
-                        </table>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Estadísticas de Queries - full width */}
-              {results && (
-                <Card className="md:col-span-2 mt-6">
-                  <CardHeader>
-                    <CardTitle className="text-xl">Estadísticas & QA de Queries</CardTitle>
-                    <CardDescription>Información sobre las consultas realizadas</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-4 gap-4 mb-4">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-primary">{results.totalQueries}</div>
-                        <div className="text-sm text-muted-foreground">Total registros</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-success">{results.uniqueQueries}</div>
-                        <div className="text-sm text-muted-foreground">Queries únicas</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-accent">
-                          {(results.totalQueries / results.uniqueQueries).toFixed(1)}
-                        </div>
-                        <div className="text-sm text-muted-foreground">Promedio por query</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-destructive">
-                          {Math.max(...results.queryFrequencies.map((q) => q.count))}
-                        </div>
-                        <div className="text-sm text-muted-foreground">Máximo repeticiones</div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </>
+             </>
           )}
 
           

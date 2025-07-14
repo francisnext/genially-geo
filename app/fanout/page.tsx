@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Loader2 } from "lucide-react"
+import { extractSemanticChunks } from "@/lib/chunking"
 import SidebarMenu from "@/components/SidebarMenu"
 
 interface Chunk {
@@ -98,6 +99,7 @@ export default function QueryFanOutPage() {
     setLoading(true)
     try {
       const html = await fetchHtml(url)
+      // Usar la función de lib/chunking.ts que acepta granularidad
       const extracted = extractSemanticChunks(html)
       setChunks(extracted)
       if (extracted.length > 0) {
@@ -188,6 +190,12 @@ export default function QueryFanOutPage() {
       </div>
     )
   }
+
+  const GRANULARIDADES = [
+    { value: "baja", label: "Baja (bloques grandes)" },
+    { value: "media", label: "Media (por sección)" },
+    { value: "alta", label: "Alta (por párrafo)" },
+  ]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[var(--background)] to-[var(--primary)] flex">
