@@ -306,21 +306,21 @@ export default function AnalisisQueriesPage() {
                               </td>
                               <td className="p-2 max-w-[300px]">
                                 <ul className="list-disc list-inside">
-                                  {detail.highlights.map((highlight, idx) => (
+                                  {detail.highlights.map((highlight: string, idx: number) => (
                                     <li key={idx} className="whitespace-normal break-words" title={highlight}>{highlight}</li>
                                   ))}
                                 </ul>
                               </td>
                               <td className="p-2 max-w-[300px]">
                                 <ul className="list-disc list-inside">
-                                  {detail.pros.map((pro, idx) => (
+                                  {detail.pros.map((pro: string, idx: number) => (
                                     <li key={idx} className="whitespace-normal break-words" title={pro}>{pro}</li>
                                   ))}
                                 </ul>
                               </td>
                               <td className="p-2 max-w-[300px]">
                                 <ul className="list-disc list-inside">
-                                  {detail.cons.map((con, idx) => (
+                                  {detail.cons.map((con: string, idx: number) => (
                                     <li key={idx} className="whitespace-normal break-words" title={con}>{con}</li>
                                   ))}
                                 </ul>
