@@ -10,8 +10,10 @@ import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, Legend, ScatterChart, Scatter, ZAxis } from "recharts"
-import { Upload, BarChart3, PieChartIcon, Lock, Eye, EyeOff, FilterIcon, XCircle } from "lucide-react"
+// Eliminados los imports de gráficos y sus iconos
+// import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, Legend, ScatterChart, Scatter, ZAxis } from "recharts"
+// import { Upload, BarChart3, PieChartIcon, Lock, Eye, EyeOff, FilterIcon, XCircle } from "lucide-react"
+import { Upload, Lock, Eye, EyeOff, FilterIcon, XCircle } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -22,9 +24,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-import { SAMPLE_DATASET, QueryData, Tool, MarcaMencionada } from "@/data/sample-dataset"
+import { SAMPLE_DATASET, getUniqueKeywords, SampleDatasetItem } from "@/data/sample-dataset"
 import geoDiagnostico from "@/data/geo-diagnostico.json"
 import SidebarMenu from "@/components/SidebarMenu"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 interface Debilidad {
   descripcion: string;
@@ -46,7 +50,7 @@ interface MarketShareResult {
   queryFrequencies: QueryFrequency[]
   totalQueries: number
   uniqueQueries: number
-  rawData: QueryData[]
+  rawData: SampleDatasetItem[]
 }
 
 interface QueryFrequency {
@@ -98,6 +102,8 @@ export default function MarketShareAnalyzer() {
   const [results, setResults] = useState<MarketShareResult | null>(null)
   const [selectedDetailBrand, setSelectedDetailBrand] = useState<string>("all")
 
+  const router = useRouter();
+
   // Al autenticar, carga automáticamente el SAMPLE_DATASET
   const handleLogin = () => {
     setAuthLoading(true)
@@ -135,8 +141,11 @@ export default function MarketShareAnalyzer() {
     console.log("Datos cargados:", data)
 
     // Verificar la estructura de los datos en tools
-    console.log("\nEstructura detallada de tools en el primer registro:")
-    data[0]?.tools?.forEach((tool, index) => {
+    let tools: any[] = [];
+    try {
+      tools = data[0]?.json_content ? JSON.parse(data[0].json_content) : [];
+    } catch {}
+    tools.forEach((tool, index) => {
       console.log(`Tool ${index + 1}:`, {
         name: tool.name,
         nombre: tool.nombre,
@@ -145,26 +154,26 @@ export default function MarketShareAnalyzer() {
     })
 
     const totalQueries = data.length
-    const uniqueQueries = new Set(data.map((item) => item.query.toLowerCase())).size
+    const uniqueQueries = new Set(data.map((item) => (item.keyword || "").toLowerCase())).size
 
     // Calcular frecuencias de queries
     const queryCounts: { [key: string]: { count: number; withBrands: number; withGenially: number } } = {}
     data.forEach((item) => {
-      const query = item.query.toLowerCase()
+      const query = (item.keyword || "").toLowerCase()
       if (!queryCounts[query]) {
         queryCounts[query] = { count: 0, withBrands: 0, withGenially: 0 }
       }
       queryCounts[query].count++
-      
       // Verificar si tiene marcas
-      if (item.tools && item.tools.length > 0) {
+      let tools: any[] = [];
+      try {
+        tools = item.json_content ? JSON.parse(item.json_content) : [];
+      } catch {}
+      if (tools.length > 0) {
         queryCounts[query].withBrands++
       }
-      
       // Verificar si tiene Genially
-      if (item.tools?.some(tool => 
-        (tool.name || tool.nombre || "").toLowerCase().includes("genially")
-      )) {
+      if (tools.some(tool => (tool.name || tool.nombre || "").toLowerCase().includes("genially"))) {
         queryCounts[query].withGenially++
       }
     })
@@ -196,10 +205,13 @@ export default function MarketShareAnalyzer() {
 
     data.forEach((item, index) => {
       let hasGeniallyInQuery = false
-      console.log(`\nProcesando query ${index + 1}:`, item.query)
-
+      console.log(`\nProcesando query ${index + 1}:`, item.keyword)
       // Procesar tools
-      item.tools?.forEach((tool) => {
+      let tools: any[] = [];
+      try {
+        tools = item.json_content ? JSON.parse(item.json_content) : [];
+      } catch {}
+      tools.forEach((tool) => {
         const brand = tool.name || tool.nombre || ""
         if (!brand) {
           console.log("Tool sin nombre encontrada:", tool)
@@ -207,21 +219,19 @@ export default function MarketShareAnalyzer() {
         }
         totalBrandMentions++
         console.log(`Marca encontrada: "${brand}"`)
-        
         // Actualizar conteo de marcas
         if (!brandCounts[brand]) {
           brandCounts[brand] = { count: 0, totalSentiment: 0 }
         }
         brandCounts[brand].count++
         brandCounts[brand].totalSentiment += tool.sentiment || tool.sentimiento || 0
-        
         if (isGenially(brand)) {
           geniallyMentions++
           hasGeniallyInQuery = true
-          console.log(`¡Genially encontrado en la query ${index + 1}!`)
+          console.log(`¡Genially encontrado en la query ${index + 1}!
+`)
         }
       })
-
       // Si Genially aparece en esta query, incrementar el contador
       if (hasGeniallyInQuery) {
         queriesWithGenially++
@@ -230,9 +240,13 @@ export default function MarketShareAnalyzer() {
     })
 
     // Calcular menciones de marcas
-    const totalQueriesWithBrands = data.filter((item) => 
-      (item.tools && item.tools.length > 0)
-    ).length
+    const totalQueriesWithBrands = data.filter((item) => {
+      let tools: any[] = [];
+      try {
+        tools = item.json_content ? JSON.parse(item.json_content) : [];
+      } catch {}
+      return tools.length > 0;
+    }).length
 
     console.log("\nResumen de conteos:")
     console.log("Total de queries:", totalQueries)
@@ -288,28 +302,36 @@ export default function MarketShareAnalyzer() {
 
     // Filtrar los datos originales por la query seleccionada
     const filteredData = results.rawData.filter(
-      (item) => item.query && item.query.toLowerCase().trim() === "all", // Always show all queries
+      (item) => item.keyword && item.keyword.toLowerCase().trim() === "all", // Always show all queries
     )
 
     // Filtrar queries que mencionan marcas usando 'tools'
-    const queriesWithBrands = filteredData.filter(
-      (item) => item.tools && Array.isArray(item.tools) && item.tools.length > 0
-    )
+    const queriesWithBrands = filteredData.filter((item) => {
+      let tools: any[] = [];
+      try {
+        tools = item.json_content ? JSON.parse(item.json_content) : [];
+      } catch {}
+      return Array.isArray(tools) && tools.length > 0;
+    })
 
     // Contar queries que mencionan Genially usando 'tools'
-    const queriesWithGenially = queriesWithBrands.filter((item) =>
-      item.tools?.some(
-        (tool) =>
-          (tool.name || tool.nombre || "").toLowerCase().includes("genially")
-      )
-    )
+    const queriesWithGenially = queriesWithBrands.filter((item) => {
+      let tools: any[] = [];
+      try {
+        tools = item.json_content ? JSON.parse(item.json_content) : [];
+      } catch {}
+      return tools.some((tool: any) => (tool.name || tool.nombre || "").toLowerCase().includes("genially"));
+    })
 
     // Contar todas las menciones de marcas usando 'tools'
     const brandCounts: { [key: string]: { count: number; totalSentiment: number } } = {}
     let totalBrandMentions = 0
-
     queriesWithBrands.forEach((item) => {
-      item.tools?.forEach((tool) => {
+      let tools: any[] = [];
+      try {
+        tools = item.json_content ? JSON.parse(item.json_content) : [];
+      } catch {}
+      tools.forEach((tool: any) => {
         const brandName = tool.name || tool.nombre || ""
         if (brandName) {
           if (!brandCounts[brandName]) {
@@ -339,15 +361,19 @@ export default function MarketShareAnalyzer() {
     // Recalcular queryFrequencies para la query filtrada
     const queryCounts: { [key: string]: { count: number; withBrands: number; withGenially: number } } = {}
     filteredData.forEach((item) => {
-      const query = item.query.toLowerCase()
+      const query = (item.keyword || "").toLowerCase()
       if (!queryCounts[query]) {
         queryCounts[query] = { count: 0, withBrands: 0, withGenially: 0 }
       }
       queryCounts[query].count++
-      if (item.tools && item.tools.length > 0) {
+      let tools: any[] = [];
+      try {
+        tools = item.json_content ? JSON.parse(item.json_content) : [];
+      } catch {}
+      if (tools.length > 0) {
         queryCounts[query].withBrands++
       }
-      if (item.tools?.some(tool => (tool.name || tool.nombre || "").toLowerCase().includes("genially"))) {
+      if (tools.some((tool: any) => (tool.name || tool.nombre || "").toLowerCase().includes("genially"))) {
         queryCounts[query].withGenially++
       }
     })
@@ -385,8 +411,8 @@ export default function MarketShareAnalyzer() {
     const weekBrandCount: { [week: string]: { [brand: string]: number } } = {};
 
     results.rawData.forEach((item) => {
-      if (!item.fecha) return;
-      const dateObj = new Date(item.fecha);
+      if (!item.date) return;
+      const dateObj = new Date(item.date);
       // Obtener el año y el número de semana ISO
       const year = dateObj.getUTCFullYear();
       const firstDayOfYear = new Date(Date.UTC(year, 0, 1));
@@ -398,14 +424,16 @@ export default function MarketShareAnalyzer() {
       if (!weekBrandCount[weekKey]) weekBrandCount[weekKey] = {};
       
       // Procesar tools en lugar de marcasMencionadas
-      if (item.tools && Array.isArray(item.tools)) {
-        item.tools.forEach((tool) => {
-          const brand = tool.name || tool.nombre || "";
-          if (brand && topBrands.includes(brand)) {
-            weekBrandCount[weekKey][brand] = (weekBrandCount[weekKey][brand] || 0) + 1;
-          }
-        });
-      }
+      let tools: any[] = [];
+      try {
+        tools = item.json_content ? JSON.parse(item.json_content) : [];
+      } catch {}
+      tools.forEach((tool) => {
+        const brand = tool.name || tool.nombre || "";
+        if (brand && topBrands.includes(brand)) {
+          weekBrandCount[weekKey][brand] = (weekBrandCount[weekKey][brand] || 0) + 1;
+        }
+      });
     });
 
     // Convertir a array de objetos para Recharts, ordenado por semana
@@ -419,32 +447,10 @@ export default function MarketShareAnalyzer() {
     });
   }, [results]);
 
-  // Función para procesar los detalles de las marcas
-  const getBrandDetails = (data: QueryData[]): BrandDetails => {
-    const details: BrandDetails = {}
+  // Eliminar función getBrandDetails y cualquier lógica que use 'tools' o 'query' de SAMPLE_DATASET
 
-    data.forEach((item) => {
-      // Procesar tools
-      item.tools?.forEach((tool) => {
-        const brand = tool.name || tool.nombre || ""
-        if (!brand) return
-
-        if (!details[brand]) {
-          details[brand] = []
-        }
-
-        details[brand].push({
-          query: item.query,
-          highlights: tool.highlights || [],
-          pros: tool.pros || [],
-          cons: tool.cons || tool.contras || [],
-          sentimiento: tool.sentiment || tool.sentimiento || 0,
-        })
-      })
-    })
-
-    return details
-  }
+  // Obtener keywords únicas
+  const uniqueKeywords = getUniqueKeywords();
 
   // Pantalla de login
   if (!isAuthenticated) {
@@ -513,281 +519,35 @@ export default function MarketShareAnalyzer() {
             <p className="text-muted-foreground">Analiza el market share de Genially y sus competidores en diferentes LLMs</p>
           </div>
 
-          {/* Mostrar mensaje de carga */}
-          {loading && (
-            <Card>
-              <CardContent className="p-6">
-                <div className="text-center">Cargando datos...</div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Mostrar error si existe */}
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          {/* Contenido principal */}
-          {results && !loading && (
-            <>
-              {/* Grid de 2 columnas para los gráficos principales */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Market Share de Genially */}
+          {/* Listado de keywords únicas */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-xl">Market Share de Genially</CardTitle>
-                    <CardDescription>Porcentaje de queries donde aparece mencionada Genially</CardDescription>
+              <CardTitle>Keywords únicas en el dataset</CardTitle>
+              <CardDescription>Lista de todas las keywords encontradas en el dataset</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-center space-y-4">
-                      <div className="text-4xl font-bold text-primary">
-                        {results.geniallyMarketShare.toFixed(1)}%
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground" suppressHydrationWarning>
-                        <div suppressHydrationWarning>
-                          <div className="font-semibold">{results.queriesWithGenially}</div>
-                          <div>Queries que mencionan a Genially</div>
-                        </div>
-                        <div suppressHydrationWarning>
-                          <div className="font-semibold">{results.totalQueriesWithBrands}</div>
-                          <div>Número de queries que mencionan al menos una marca</div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Resumen de Distribución */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-xl">Resumen de Marcas</CardTitle>
-                    <CardDescription>Estadísticas generales de menciones de marcas</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4" suppressHydrationWarning>
-                      <div className="grid grid-cols-2 gap-4" suppressHydrationWarning>
-                        <div className="text-center" suppressHydrationWarning>
-                          <div className="text-2xl font-bold text-success">
-                            {results.brandDistribution.length}
-                          </div>
-                          <div className="text-sm text-muted-foreground">Marcas únicas</div>
-                        </div>
-                        <div className="text-center" suppressHydrationWarning>
-                          <div className="text-2xl font-bold text-primary">{results.totalBrandMentions}</div>
-                          <div className="text-sm text-muted-foreground">Total menciones</div>
-                        </div>
-                      </div>
-                      <div suppressHydrationWarning>
-                        <h4 className="font-semibold mb-2">Top 3 Marcas:</h4>
-                        <div className="space-y-1" suppressHydrationWarning>
-                          {results.brandDistribution.slice(0, 3).map((brand, index) => (
-                            <div key={brand.brand} className="flex justify-between items-center" suppressHydrationWarning>
-                              <span className="text-sm">
-                                {index + 1}. {brand.brand}
-                              </span>
-                              <Badge variant="secondary">{brand.percentage.toFixed(1)}%</Badge>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Diagnóstico GEO: Debilidades y Oportunidades */}
-                <Card className="md:col-span-2">
-                  <CardHeader>
-                    <CardTitle>Debilidades y Oportunidades</CardTitle>
-                    <CardDescription>Principales debilidades detectadas y oportunidades de mejora para Genially</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Tabla de Debilidades */}
-                      <div>
-                        <h4 className="font-semibold mb-2">Debilidades</h4>
-                        <div className="rounded-lg border overflow-y-auto max-h-96 bg-background">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="bg-card border-b border-border sticky top-0">
-                                <th className="text-left p-2">Debilidad</th>
-                                <th className="text-left p-2">Prioridad</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {geoDiagnostico.debilidades
-                                .slice()
-                                .sort((a, b) => {
-                                  const prioridadOrden: { [key in 'alta' | 'media' | 'baja']: number } = { alta: 0, media: 1, baja: 2 };
-                                  return prioridadOrden[(a.prioridad as 'alta' | 'media' | 'baja')] - prioridadOrden[(b.prioridad as 'alta' | 'media' | 'baja')];
-                                })
-                                .map((deb, idx) => {
-                                  const debilidad = deb as Debilidad;
-                                  return (
-                                    <tr key={idx} className="border-b border-border last:border-b-0">
-                                      <td className="p-2">{debilidad.descripcion}</td>
-                                      <td className="p-2 capitalize font-semibold">
-                                        {debilidad.prioridad === 'alta' && <span className="text-green-700 bg-green-100 rounded px-2 py-1 mr-1">Alta</span>}
-                                        {debilidad.prioridad === 'media' && <span className="text-yellow-700 bg-yellow-100 rounded px-2 py-1 mr-1">Media</span>}
-                                        {debilidad.prioridad === 'baja' && <span className="text-gray-700 bg-gray-100 rounded px-2 py-1 mr-1">Baja</span>}
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                      {/* Tabla de Oportunidades */}
-                      <div>
-                        <h4 className="font-semibold mb-2">Oportunidades y Estrategias</h4>
-                        <div className="rounded-lg border overflow-y-auto max-h-96 bg-background">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="bg-card border-b border-border sticky top-0">
-                                <th className="text-left p-2">Acción</th>
-                                <th className="text-left p-2">Coste</th>
-                                <th className="text-left p-2">Prioridad</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {geoDiagnostico.estrategias_y_oportunidades
-                                .slice()
-                                .sort((a, b) => {
-                                  const prioridadOrden: { [key in 'alta' | 'media' | 'baja']: number } = { alta: 0, media: 1, baja: 2 };
-                                  return prioridadOrden[(a.prioridad as 'alta' | 'media' | 'baja')] - prioridadOrden[(b.prioridad as 'alta' | 'media' | 'baja')];
-                                })
-                                .map((op, idx) => {
-                                  const estrategia = op as Estrategia;
-                                  return (
-                                    <tr key={idx} className="border-b border-border last:border-b-0">
-                                      <td className="p-2">{estrategia.accion}</td>
-                                      <td className="p-2 capitalize">{estrategia.coste}</td>
-                                      <td className="p-2 capitalize font-semibold">
-                                        {estrategia.prioridad === 'alta' && <span className="text-green-700 bg-green-100 rounded px-2 py-1 mr-1">Alta</span>}
-                                        {estrategia.prioridad === 'media' && <span className="text-yellow-700 bg-yellow-100 rounded px-2 py-1 mr-1">Media</span>}
-                                        {estrategia.prioridad === 'baja' && <span className="text-gray-700 bg-gray-100 rounded px-2 py-1 mr-1">Baja</span>}
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Gráfico de Barras */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <BarChart3 className="w-5 h-5" />
-                      Distribución de Market Share por Marca
-                    </CardTitle>
-                    <CardDescription>Porcentaje de menciones de cada marca</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={results.brandDistribution.slice(0, 10)}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis 
-                            dataKey="brand" 
-                            angle={-45} 
-                            textAnchor="end" 
-                            height={80} 
-                            fontSize={12}
-                            interval={0}
-                          />
-                          <YAxis />
-                          <Tooltip
-                            formatter={(value: number) => [`${value.toFixed(1)}%`, "Porcentaje"]}
-                            labelFormatter={(label) => `Marca: ${label}`}
-                          />
-                          <Bar dataKey="percentage" fill="#3B82F6" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Gráfico Circular */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <PieChartIcon className="w-5 h-5" />
-                      Distribución Visual de Marcas (Top 10)
-                    </CardTitle>
-                    <CardDescription>Representación visual del market share</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={results.brandDistribution.slice(0, 10)}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={({ brand, percentage }) => `${brand}: ${percentage.toFixed(1)}%`}
-                            outerRadius={80}
-                            innerRadius={40}
-                            fill="#8884d8"
-                            dataKey="percentage"
-                          >
-                            {results.brandDistribution.slice(0, 10).map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip 
-                            formatter={(value: number, name: string, props: any) => [
-                              `${value.toFixed(1)}%`,
-                              props.payload.brand
-                            ]}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Distribución Detallada de Marcas */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Distribución Detallada de Marcas</CardTitle>
-                    <CardDescription>Lista completa de todas las marcas mencionadas</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {/* Limitar altura y permitir scroll vertical */}
-                    <div className="overflow-y-auto max-h-96">
-                      <table className="w-full text-sm">
-                        <thead className="border-b border-border bg-card">
-                          <tr>
-                            <th className="text-left p-2">#</th>
-                            <th className="text-left p-2">Marca</th>
-                            <th className="text-right p-2">Menciones</th>
-                            <th className="text-right p-2">Porcentaje</th>
-                            <th className="text-right p-2">Sentimiento</th>
+              <div className="overflow-x-auto">
+                <table className="min-w-full border rounded-lg bg-white">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="px-2 py-2 text-left w-20">#</th>
+                      <th className="px-4 py-2 text-left">Keyword</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {results.brandDistribution.map((brand, index) => (
-                            <tr key={brand.brand} className="border-b border-border hover:bg-card">
-                              <td className="p-2">{index + 1}</td>
-                              <td className="p-2 font-medium">
-                                {brand.brand}
-                                {brand.brand.toLowerCase().includes("genially") && (
-                                  <Badge className="ml-2" variant="default">
-                                    ⭐
-                                  </Badge>
-                                )}
+                    {uniqueKeywords.length === 0 && (
+                      <tr><td colSpan={2} className="text-muted-foreground px-4 py-2">No hay keywords.</td></tr>
+                    )}
+                    {uniqueKeywords.map((kw, idx) => (
+                      <tr
+                        key={kw}
+                        className="border-b last:border-b-0 hover:bg-muted/40 cursor-pointer"
+                        onClick={() => router.push(`/keyword/${encodeURIComponent(kw)}`)}
+                      >
+                        <td className="px-4 py-2 text-left font-bold">{idx + 1}</td>
+                        <td className="px-4 py-2 text-left">
+                          {kw}
                               </td>
-                              <td className="p-2 text-right">{brand.count}</td>
-                              <td className="p-2 text-right">{brand.percentage.toFixed(2)}%</td>
-                              <td className="p-2 text-right">{brand.avgSentiment.toFixed(2)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -796,136 +556,7 @@ export default function MarketShareAnalyzer() {
                   </CardContent>
                 </Card>
 
-                {/* Gráfico de dispersión Market Share vs. Sentimiento (Top 10) */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Market Share vs. Sentimiento (Top 10)</CardTitle>
-                    <CardDescription>Relación entre presencia en el mercado y sentimiento para las 10 marcas mejor valoradas</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-[450px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <ScatterChart
-                          margin={{
-                            top: 20,
-                            right: 20,
-                            bottom: 20,
-                            left: 20,
-                          }}
-                        >
-                          <CartesianGrid />
-                          <XAxis 
-                            type="number" 
-                            dataKey="percentage" 
-                            name="Market Share" 
-                            unit="%" 
-                            domain={[0, 'dataMax + 5']}
-                            label={{ value: 'Market Share (%)', position: 'bottom' }}
-                          />
-                          <YAxis 
-                            type="number" 
-                            dataKey="avgSentiment" 
-                            name="Sentimiento" 
-                            domain={[0.6, 1]}
-                            label={{ value: 'Sentimiento', angle: -90, position: 'left' }}
-                          />
-                          <ZAxis 
-                            type="number" 
-                            dataKey="count" 
-                            range={[400, 1200]} 
-                            name="Menciones"
-                          />
-                          <Tooltip 
-                            cursor={{ strokeDasharray: '3 3' }}
-                            content={({ active, payload }) => {
-                              if (active && payload && payload.length) {
-                                const data = payload[0].payload;
-                                return (
-                                  <div className="bg-white p-2 border rounded shadow-sm">
-                                    <p className="font-semibold">{data.brand}</p>
-                                    <p>Market Share: {data.percentage.toFixed(1)}%</p>
-                                    <p>Sentimiento: {data.avgSentiment.toFixed(2)}</p>
-                                    <p>Menciones: {data.count}</p>
-                                  </div>
-                                );
-                              }
-                              return null;
-                            }}
-                          />
-                          <Scatter
-                            name="Marcas"
-                            data={results.brandDistribution
-                              .map(brand => ({
-                                ...brand,
-                                avgSentiment: brand.avgSentiment || 0
-                              }))
-                              .sort((a, b) => b.count - a.count)
-                              .slice(0, 10)
-                            }
-                            fill="#8884d8"
-                          >
-                            {results.brandDistribution
-                              .sort((a, b) => b.count - a.count)
-                              .slice(0, 10)
-                              .map((entry, index) => (
-                                <Cell 
-                                  key={`cell-${index}`} 
-                                  fill={COLORS[index % COLORS.length]} 
-                                  fillOpacity={0.6}
-                                />
-                              ))
-                            }
-                          </Scatter>
-                        </ScatterChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Gráfico de Evolución Semanal - full width */}
-              {results && weeklyEvolutionData.length > 0 && (
-                <Card className="md:col-span-2 mt-6">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <BarChart3 className="w-5 h-5" />
-                      Evolución semanal de menciones por marca (Top 10)
-                    </CardTitle>
-                    <CardDescription>
-                      Número de menciones semanales para las 10 marcas más mencionadas
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-96">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={weeklyEvolutionData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="week" />
-                          <YAxis allowDecimals={false} />
-                          <Tooltip />
-                          <Legend />
-                          {results.brandDistribution.slice(0, 10).map((brand, idx) => (
-                            <Line
-                              key={brand.brand}
-                              type="monotone"
-                              dataKey={brand.brand}
-                              stroke={COLORS[idx % COLORS.length]}
-                              strokeWidth={2}
-                              dot={false}
-                            />
-                          ))}
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-             </>
-          )}
-
-          
-
+          {/* Eliminar la Card de Debilidades y Oportunidades de la página principal */}
           
         </div>
       </main>
