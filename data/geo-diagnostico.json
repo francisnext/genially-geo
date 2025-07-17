@@ -5,15 +5,23 @@
       "prioridad": "alta"
     },
     {
+      "descripcion": "Muchas keywords posicionadas en top 20 tienen bajo CTR estimado, lo que indica títulos y metas poco atractivos o desalineados con la intención de búsqueda.",
+      "prioridad": "alta"
+    },
+    {
+      "descripcion": "Varias URLs relevantes aparecen con posición >10, sin esfuerzos visibles de optimización para avanzar a top 3 (ej: plantillas, recursos, blog).",
+      "prioridad": "alta"
+    },
+    {
       "descripcion": "Falta de enfoque en términos clave como 'SCORM', 'LTI', 'authoring tool' o 'learning management system' en el contenido.",
       "prioridad": "alta"
     },
     {
-      "descripcion": "Gran cantidad de URLs indexadas con bajo contenido optimizado para SEO transaccional (plantillas, recursos, ejemplos), sin intención clara.",
+      "descripcion": "Presencia de keywords con volumen alto sin URL dedicada u optimizada, como 'presentation examples', 'interactive resume', 'educational infographics'.",
       "prioridad": "media"
     },
     {
-      "descripcion": "Limitado uso de long-tails orientados a 'interactive training', 'corporate e-learning', 'gamification in learning'.",
+      "descripcion": "Exceso de contenido tipo plantilla con bajo posicionamiento y sin una agrupación semántica SEO clara.",
       "prioridad": "media"
     },
     {
@@ -21,43 +29,76 @@
       "prioridad": "media"
     },
     {
+      "descripcion": "Limitado uso de long-tails orientados a 'interactive training', 'corporate e-learning', 'gamification in learning'.",
+      "prioridad": "media"
+    },
+    {
       "descripcion": "Falta de enlazado interno robusto entre los contenidos educativos (blog, templates, academy).",
+      "prioridad": "baja"
+    },
+    {
+      "descripcion": "URLs extensas y poco amigables para SEO en ciertas páginas de plantillas.",
       "prioridad": "baja"
     }
   ],
   "estrategias_y_oportunidades": [
     {
-      "accion": "Optimizar contenido existente con términos como 'SCORM', 'LTI', 'interactive training', 'gamification in learning'",
+      "accion": "Optimizar títulos y meta descripciones para keywords top 10 con bajo CTR, alineándolos con la intención de búsqueda.",
       "coste": "bajo",
       "prioridad": "alta"
     },
     {
-      "accion": "Crear landings orientadas a industrias clave (educación, salud, finanzas, corporativo) con contenido adaptado",
+      "accion": "Optimizar contenido existente con términos como 'SCORM', 'LTI', 'interactive training', 'gamification in learning'.",
+      "coste": "bajo",
+      "prioridad": "alta"
+    },
+    {
+      "accion": "Reforzar el contenido SEO de las URLs en posición 11-20 para empujarlas al top 10 mediante mejoras on-page y enlazado interno.",
+      "coste": "bajo",
+      "prioridad": "alta"
+    },
+    {
+      "accion": "Registrar y posicionarse en directorios de software como G2, Capterra, TrustRadius, eLearningIndustry.",
       "coste": "medio",
       "prioridad": "alta"
     },
     {
-      "accion": "Registrar y posicionarse en directorios de software como G2, Capterra, TrustRadius, eLearningIndustry",
+      "accion": "Crear landings orientadas a industrias clave (educación, salud, finanzas, corporativo) con contenido adaptado.",
       "coste": "medio",
       "prioridad": "alta"
     },
     {
-      "accion": "Aprovechar las plantillas indexadas para agruparlas en clústeres temáticos SEO (ej: 'templates for online courses')",
+      "accion": "Crear o mejorar landings para keywords con volumen alto y sin página dedicada como 'interactive resume' o 'educational infographics'.",
+      "coste": "medio",
+      "prioridad": "alta"
+    },
+    {
+      "accion": "Agrupar las plantillas por intención de búsqueda ('templates for teachers', 'corporate presentations') y crear clústeres SEO.",
+      "coste": "medio",
+      "prioridad": "media"
+    },
+    {
+      "accion": "Aplicar estructura de silos en el sitio para conectar contenido entre blog, plantillas, academia y páginas de producto.",
       "coste": "bajo",
       "prioridad": "media"
     },
     {
-      "accion": "Reforzar el enlazado interno entre blog, academia y páginas de producto",
+      "accion": "Desarrollar artículos orientados a búsquedas long-tail transaccionales ('best authoring tool for schools', etc.).",
       "coste": "bajo",
       "prioridad": "media"
     },
     {
-      "accion": "Desarrollar artículos orientados a búsquedas long-tail transaccionales ('best authoring tool for schools', etc.)",
+      "accion": "Reescribir URLs clave para que sean más limpias y orientadas a palabras clave.",
       "coste": "bajo",
-      "prioridad": "media"
+      "prioridad": "baja"
     },
     {
-      "accion": "Internacionalizar las estrategias SEO para mercados clave como EE.UU., LATAM y Europa",
+      "accion": "Usar datos del JSON para definir quick wins: keywords con volumen alto, buena posición y CTR mejorable.",
+      "coste": "bajo",
+      "prioridad": "alta"
+    },
+    {
+      "accion": "Internacionalizar las estrategias SEO para mercados clave como EE.UU., LATAM y Europa.",
       "coste": "alto",
       "prioridad": "alta"
     }
