@@ -395,11 +395,11 @@ export default function KeywordPage({ params }: KeywordPageProps) {
   // Función para detectar si una URL es home
   function isHomeUrl(url: string) {
     try {
-      const u = new URL(url);
-      // Considera home si termina en / y no tiene más path, o si el path es vacío
-      return (u.pathname === "/" || u.pathname === "") && !u.search && !u.hash;
+      const u = new URL(url.trim());
+      // Normaliza el path quitando todos los slashes finales
+      const normalizedPath = u.pathname.replace(/\/+$/, "");
+      return (normalizedPath === "" || normalizedPath === ".") && !u.search && !u.hash;
     } catch {
-      // Si no es una URL válida, no la ocultes
       return false;
     }
   }
@@ -629,6 +629,7 @@ export default function KeywordPage({ params }: KeywordPageProps) {
                             </thead>
                             <tbody>
                               {sourcesSorted
+                                .filter(s => !hideHomes || !isHomeUrl(s.url))
                                 .map((s, i) => ({...s, index: i + 1}))
                                 .map((s, i) => (
                                   <tr key={s.url} className="border-b last:border-b-0 hover:bg-muted/40">
