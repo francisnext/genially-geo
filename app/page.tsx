@@ -29,6 +29,7 @@ import geoDiagnostico from "@/data/geo-diagnostico.json"
 import SidebarMenu from "@/components/SidebarMenu"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import Topbar from "@/components/Topbar";
 
 interface Debilidad {
   descripcion: string;
@@ -161,6 +162,18 @@ function getKeywordStats(keyword: string) {
     geniallyShare,
     topBrands,
   };
+}
+
+// Añadir componente auxiliar para la mini barra de progreso
+function MiniBar({ percent }: { percent: number }) {
+  return (
+    <div className="w-60 h-2 mt-1 bg-gray-200 rounded mx-auto">
+      <div
+        className="h-2 rounded bg-orange-400"
+        style={{ width: `${percent}%`, minWidth: percent > 0 ? '8px' : 0 }}
+      />
+    </div>
+  );
 }
 
 export default function MarketShareAnalyzer() {
@@ -530,139 +543,146 @@ export default function MarketShareAnalyzer() {
   // Pantalla de login
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br bg-[#F9F8FC] from-[var(--background)] to-[var(--primary)] flex items-center justify-center p-4" suppressHydrationWarning>
-        <Card className="w-full max-w-md bg-[#F9F8FC] border-none shadow-none">
-          <CardHeader className="text-center space-y-4">
-            <img src="/favicon.png" alt="Genially Logo" className="mx-auto w-10 h-10 mb-4" />
-            <div suppressHydrationWarning>
-              <CardTitle className="text-2xl text-foreground">Acceso Restringido</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Ingresa la contraseña..."
-                  className="pr-10"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
+      <>
+        <Topbar />
+        <div className="min-h-screen bg-gradient-to-br bg-[#F9F8FC] from-[var(--background)] to-[var(--primary)] flex items-center justify-center p-4" suppressHydrationWarning>
+          <Card className="w-full max-w-md bg-[#F9F8FC] border-none shadow-none">
+            <CardHeader className="text-center space-y-4">
+              <img src="/favicon.png" alt="Genially Logo" className="mx-auto w-10 h-10 mb-4" />
+              <div suppressHydrationWarning>
+                <CardTitle className="text-2xl text-foreground">Acceso Restringido</CardTitle>
               </div>
-            </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Ingresa la contraseña..."
+                    className="pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
 
-            {authError && (
-              <Alert variant="destructive">
-                <AlertDescription>{authError}</AlertDescription>
-              </Alert>
-            )}
+              {authError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{authError}</AlertDescription>
+                </Alert>
+              )}
 
-            <Button onClick={handleLogin} disabled={!password.trim() || authLoading} className="w-full bg-[#6C29FF] rounded-full">
-              {authLoading ? "Verificando..." : "Acceder"}
-            </Button>
+              <Button onClick={handleLogin} disabled={!password.trim() || authLoading} className="w-full bg-[#6C29FF] rounded-full">
+                {authLoading ? "Verificando..." : "Acceder"}
+              </Button>
 
-            <div className="text-center text-sm text-muted-foreground" suppressHydrationWarning>
-              <p>Herramienta interna del equipo Genially</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+              <div className="text-center text-sm text-muted-foreground" suppressHydrationWarning>
+                <p>Herramienta interna del equipo Genially</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </>
     )
   }
 
   // Aplicación principal (solo se muestra después de autenticarse)
   return (
-    <div className="bg-[#F9F8FC] min-h-screen bg-gradient-to-br from-[var(--background)] to-[var(--primary)] flex">
-      {/* Menú lateral */}
-      <SidebarMenu />
-      <main className="flex-1 p-4">
-        <div className="max-w-7xl mx-auto space-y-6" suppressHydrationWarning>
-          <div className="text-center space-y-2" suppressHydrationWarning>
-            <h1 className="text-3xl font-bold text-foreground">Análisis GEO de Genially</h1>
-            <p className="text-muted-foreground">Analiza el market share de Genially y sus competidores en diferentes LLMs</p>
+    <>
+      <Topbar />
+      <div className="bg-[#F9F8FC] min-h-screen bg-gradient-to-br from-[var(--background)] to-[var(--primary)] flex">
+        {/* Menú lateral */}
+        <SidebarMenu />
+        <main className="flex-1 p-4">
+          <div className="max-w-7xl mx-auto space-y-6" suppressHydrationWarning>
+            
+
+            {/* Listado de keywords únicas */}
+                    <Card>
+                      <CardHeader>
+                <CardTitle>Keywords</CardTitle>
+                <CardDescription>Palabras clave analizadas para medir la visibilidad de Genially.</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                <div className="overflow-x-auto border rounded-xl">
+                  <table className="min-w-full bg-white">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="px-4 py-2 text-left">Keyword</th>
+                        <th className="px-4 py-2 text-right">Rank</th>
+                        <th className="px-2 py-2 text-right w-28">Share of Voice</th>
+                        <th className="px-4 py-2 text-center">Top Brands</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {uniqueKeywords.length === 0 && (
+                        <tr><td colSpan={5} className="text-muted-foreground px-4 py-2">No hay keywords.</td></tr>
+                      )}
+                      {uniqueKeywords.map((kw, idx) => {
+                        const stats = getKeywordStats(kw);
+                        return (
+                          <tr
+                            key={kw}
+                            className="border-b last:border-b-0 hover:bg-muted/40 cursor-pointer"
+                            onClick={() => router.push(`/keyword/${encodeURIComponent(kw)}`)}
+                          >
+                            <td className="px-4 py-2 text-left">{kw}</td>
+                            <td className="px-4 py-2 text-right">{stats.geniallyAvgPos !== null ? stats.geniallyAvgPos.toFixed(2) : '-'}</td>
+                            <td className="px-2 py-2 text-right align-middle w-28">
+                              {stats.geniallyShare !== null ? stats.geniallyShare.toFixed(1) + '%' : '-'}
+                              {stats.geniallyShare !== null && <MiniBar percent={stats.geniallyShare} />}
+                            </td>
+                            <td className="px-4 py-2 text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                {stats.topBrands.map((b, i) => {
+                                  const domain = getBrandDomain(b.brand);
+                                  return (
+                                    <Popover key={b.brand}>
+                                      <PopoverTrigger asChild>
+                                        <span className="inline-block">
+                                          <Badge variant="secondary" className="p-0 bg-white border shadow hover:bg-primary/10">
+                                            {domain ? (
+                                              <img src={`https://www.google.com/s2/favicons?domain=${domain}`} alt={b.brand} className="w-6 h-6 rounded-full" />
+                                            ) : (
+                                              <span className="w-6 h-6 flex items-center justify-center font-bold text-xs">{b.brand[0]}</span>
+                                            )}
+                                          </Badge>
+                                        </span>
+                                      </PopoverTrigger>
+                                      <PopoverContent side="top" className="bg-white border shadow-lg p-2 rounded text-xs max-w-xs">
+                                        {b.brand}
+                                      </PopoverContent>
+                                    </Popover>
+                                  );
+                                })}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Eliminar la Card de Debilidades y Oportunidades de la página principal */}
+            
           </div>
-
-          {/* Listado de keywords únicas */}
-                <Card>
-                  <CardHeader>
-              <CardTitle>Keywordst</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-              <div className="overflow-x-auto">
-                <table className="min-w-full border rounded-lg bg-white">
-                  <thead className="bg-muted">
-                    <tr>
-                      <th className="px-4 py-2 text-left">Keyword</th>
-                      <th className="px-4 py-2 text-right">Rank</th>
-                      <th className="px-4 py-2 text-right">Share of Voice</th>
-                      <th className="px-4 py-2 text-center">Top Brands</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {uniqueKeywords.length === 0 && (
-                      <tr><td colSpan={5} className="text-muted-foreground px-4 py-2">No hay keywords.</td></tr>
-                    )}
-                    {uniqueKeywords.map((kw, idx) => {
-                      const stats = getKeywordStats(kw);
-                      return (
-                        <tr
-                          key={kw}
-                          className="border-b last:border-b-0 hover:bg-muted/40 cursor-pointer"
-                          onClick={() => router.push(`/keyword/${encodeURIComponent(kw)}`)}
-                        >
-                          <td className="px-4 py-2 text-left">{kw}</td>
-                          <td className="px-4 py-2 text-right">{stats.geniallyAvgPos !== null ? stats.geniallyAvgPos.toFixed(2) : '-'}</td>
-                          <td className="px-4 py-2 text-right">{stats.geniallyShare !== null ? stats.geniallyShare.toFixed(1) + '%' : '-'}</td>
-                          <td className="px-4 py-2 text-center">
-                            <div className="flex items-center justify-center gap-2">
-                              {stats.topBrands.map((b, i) => {
-                                const domain = getBrandDomain(b.brand);
-                                return (
-                                  <Popover key={b.brand}>
-                                    <PopoverTrigger asChild>
-                                      <span className="inline-block">
-                                        <Badge variant="secondary" className="p-0 bg-white border shadow hover:bg-primary/10">
-                                          {domain ? (
-                                            <img src={`https://www.google.com/s2/favicons?domain=${domain}`} alt={b.brand} className="w-6 h-6 rounded-full" />
-                                          ) : (
-                                            <span className="w-6 h-6 flex items-center justify-center font-bold text-xs">{b.brand[0]}</span>
-                                          )}
-                                        </Badge>
-                                      </span>
-                                    </PopoverTrigger>
-                                    <PopoverContent side="top" className="bg-white border shadow-lg p-2 rounded text-xs max-w-xs">
-                                      {b.brand}
-                                    </PopoverContent>
-                                  </Popover>
-                                );
-                              })}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Eliminar la Card de Debilidades y Oportunidades de la página principal */}
-          
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </>
   )
 }

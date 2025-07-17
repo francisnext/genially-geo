@@ -10,6 +10,8 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import Link from "next/link";
 import { useEffect } from "react";
+import Topbar from "@/components/Topbar";
+import { CheckCircle, Circle } from "lucide-react";
 
 interface KeywordPageProps {
   params: { keyword: string }
@@ -20,7 +22,7 @@ function getDataForKeyword(keyword: string) {
   const items = SAMPLE_DATASET.filter(item => item.keyword === keyword);
   const totalResponses = items.length;
 
-  // Listado de marcas y posición media
+  // Listado de marcas y posición media (agrupando Genially)
   const brandStats: Record<string, { count: number; totalPos: number }> = {};
   items.forEach(item => {
     if (!item.json_content) return;
@@ -29,9 +31,13 @@ function getDataForKeyword(keyword: string) {
       tools = JSON.parse(item.json_content);
     } catch {}
     tools.forEach(tool => {
-      const name = tool.name || tool.nombre;
+      let name = tool.name || tool.nombre;
       const pos = tool.position || tool.posicion || 0;
       if (!name) return;
+      // Normalizar Genially
+      if (name.toLowerCase().includes('genially')) {
+        name = 'Genially';
+      }
       if (!brandStats[name]) brandStats[name] = { count: 0, totalPos: 0 };
       brandStats[name].count++;
       brandStats[name].totalPos += Number(pos) || 0;
@@ -297,6 +303,18 @@ function getDomainFromUrl(url: string): string | null {
   }
 }
 
+// Añadir componente auxiliar para la mini barra de progreso
+function MiniBar({ percent }: { percent: number }) {
+  return (
+    <div className="w-full h-2 mt-1 bg-gray-200 rounded">
+      <div
+        className="h-2 rounded bg-orange-400"
+        style={{ width: `${percent}%`, minWidth: percent > 0 ? '8px' : 0 }}
+      />
+    </div>
+  );
+}
+
 export default function KeywordPage({ params }: KeywordPageProps) {
   const { keyword } = params;
   if (!keyword) return notFound();
@@ -387,195 +405,38 @@ export default function KeywordPage({ params }: KeywordPageProps) {
   }
 
   return (
-    <div className="bg-[#F9F8FC] min-h-screen bg-gradient-to-br from-[var(--background)] to-[var(--primary)] flex">
-      <SidebarMenu />
-      <main className="flex-1 p-4">
-        <div className="max-w-7xl mx-auto space-y-6 pl-1">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Link href="/" className="px-2 py-1 rounded text-primary hover:bg-primary hover:text-white transition-colors text-lg font-bold focus:outline-none focus:ring-2 focus:ring-primary/50">
-                  ←
-                </Link>
-                <CardTitle>Keyword: {decodedKeyword}</CardTitle>
+    <>
+      <Topbar />
+      <div className="bg-[#F9F8FC] min-h-screen bg-gradient-to-br from-[var(--background)] to-[var(--primary)] flex">
+        <SidebarMenu />
+        <main className="flex-1 p-4">
+          <div className="max-w-7xl mx-auto space-y-6 pl-1">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Link href="/" className="px-2 py-1 rounded text-primary hover:bg-primary hover:text-white transition-colors text-lg font-bold focus:outline-none focus:ring-2 focus:ring-primary/50">
+                    ←
+                  </Link>
+                  <CardTitle>Keyword: {decodedKeyword}</CardTitle>
+                </div>
               </div>
-            </div>
-          </CardHeader>
-            <Card>
-            
-            <CardContent className="pt-4">
-              <Tabs defaultValue="brands">
-                <TabsList>
-                  <TabsTrigger value="brands">Marcas y posición media</TabsTrigger>
-                  <TabsTrigger value="prompts">Prompts</TabsTrigger>
-                  <TabsTrigger value="sources">Sources</TabsTrigger>
-                </TabsList>
-                <TabsContent value="brands">
-                  <div className="mb-2 flex justify-end items-center gap-2">
-                    <select
-                      id="ia-select"
-                      value={selectedIa || ""}
-                      onChange={e => setSelectedIa(e.target.value || null)}
-                      className="border rounded px-2 py-1 text-sm"
-                    >
-                      <option value="">Todas las IAs</option>
-                      {iaList.map(ia => (
-                        <option key={ia} value={ia}>{ia}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {brandsSorted.length === 0 ? (
-                    <div className="text-muted-foreground">No hay marcas para esta keyword{selectedIa ? ` en la IA seleccionada` : ""}.</div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full border rounded-lg bg-white">
-                        <thead className="bg-muted">
-                          <tr>
-                            <th className="px-4 py-2 text-left cursor-pointer select-none" onClick={() => setBrandSort(s => ({col: 'brand', dir: s.col === 'brand' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
-                              Marca {brandSort.col === 'brand' && (brandSort.dir === 'asc' ? '▲' : '▼')}
-                            </th>
-                            <th className="px-4 py-2 text-right cursor-pointer select-none" onClick={() => setBrandSort(s => ({col: 'count', dir: s.col === 'count' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
-                              Apariciones {brandSort.col === 'count' && (brandSort.dir === 'asc' ? '▲' : '▼')}
-                            </th>
-                            <th className="px-4 py-2 text-right cursor-pointer select-none" onClick={() => setBrandSort(s => ({col: 'avgPos', dir: s.col === 'avgPos' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
-                              Posición media {brandSort.col === 'avgPos' && (brandSort.dir === 'asc' ? '▲' : '▼')}
-                            </th>
-                            <th className="px-4 py-2 text-right cursor-pointer select-none" onClick={() => setBrandSort(s => ({col: 'shareOfVoice', dir: s.col === 'shareOfVoice' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
-                              Share of Voice (%) {brandSort.col === 'shareOfVoice' && (brandSort.dir === 'asc' ? '▲' : '▼')}
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {brandsSorted.map(b => (
-                            <tr key={b.brand} className="border-b last:border-b-0 hover:bg-muted/40">
-                              <td className="px-4 py-2 font-semibold flex items-center gap-2">
-                                {(() => {
-                                  const domain = getBrandDomain(b.brand);
-                                  return domain ? (
-                                    <img src={`https://www.google.com/s2/favicons?domain=${domain}`} alt={b.brand} className="w-5 h-5 rounded" />
-                                  ) : null;
-                                })()}
-                                {b.brand}
-                              </td>
-                              <td className="px-4 py-2 text-right">{b.count}</td>
-                              <td className="px-4 py-2 text-right">{b.avgPos.toFixed(2)}</td>
-                              <td className="px-4 py-2 text-right">{b.shareOfVoice.toFixed(1)}%</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </TabsContent>
-                <TabsContent value="prompts">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full border rounded-lg bg-white">
-                      <thead className="bg-muted">
-                        <tr>
-                          <th className="px-2 py-2 text-left w-1/4 max-w-[180px] whitespace-nowrap">Prompt</th>
-                          <th className="px-4 py-2 text-right"># Tools</th>
-                          <th className="px-4 py-2 text-right"># Sources</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {promptsSorted.length === 0 && (
-                          <tr><td colSpan={3} className="text-muted-foreground px-4 py-2">No hay prompts para esta keyword.</td></tr>
-                        )}
-                        {promptsSorted.map((p, i) => (
-                          <React.Fragment key={i}>
-                            <tr
-                              className={`border-b last:border-b-0 hover:bg-muted/40 cursor-pointer ${openPrompt === p.prompt ? 'bg-muted/30' : ''}`}
-                              onClick={() => {
-                                setOpenPrompt(openPrompt === p.prompt ? null : p.prompt);
-                                setOpenIa(null);
-                              }}
-                            >
-                              <td className="px-4 py-2 font-semibold w-full">{p.prompt}</td>
-                              <td className="px-4 py-2 text-right min-w-[180px]">{p.totalTools}</td>
-                              <td className="px-4 py-2 text-right min-w-[180px]">{p.totalSources}</td>
-                            </tr>
-                            {openPrompt === p.prompt && (
-                              <tr>
-                                <td colSpan={3} className="bg-muted/40 px-4 py-2">
-                                  <div className="overflow-x-auto">
-                                    <table className="min-w-full border rounded bg-white">
-                                      <thead className="bg-muted">
-                                        <tr>
-                                          <th className="px-3 py-1 text-left">IA</th>
-                                          <th className="px-3 py-1 text-right"># Marcas</th>
-                                          <th className="px-3 py-1 text-right"># Sources</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {Object.entries(p.iaStats).map(([ia, stats]) => (
-                                          <React.Fragment key={ia}>
-                                            <tr
-                                              className="border-b last:border-b-0 hover:bg-muted/40 cursor-pointer"
-                                              onClick={() => setOpenIa(openIa === ia ? null : ia)}
-                                            >
-                                              <td className="px-3 py-1 font-medium flex items-center gap-2">
-                                                {getIaImage(ia) && <img src={getIaImage(ia)!} alt={ia} className="w-5 h-5 rounded-full" />}
-                                                {ia}
-                                              </td>
-                                              <td className="px-3 py-1 text-right">{stats.marcas}</td>
-                                              <td className="px-3 py-1 text-right">{stats.sources}</td>
-                                            </tr>
-                                            {openIa === ia && (
-                                              <tr>
-                                                <td colSpan={3} className="bg-muted/40 px-3 py-2">
-                                                  {stats.items
-                                                    .map(item => item.content)
-                                                    .filter(Boolean)
-                                                    .map((content, idx) => (
-                                                      <div key={idx} className="mb-4 p-4 bg-white rounded shadow-sm border text-sm max-w-none prose prose-sm prose-p:mb-4 prose-a:underline prose-a:text-primary">
-                                                        <ReactMarkdown>{content}</ReactMarkdown>
-                                                      </div>
-                                                    ))}
-                                                </td>
-                                              </tr>
-                                            )}
-                                          </React.Fragment>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
-                          </React.Fragment>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </TabsContent>
-                <TabsContent value="sources">
-                  <TooltipProvider>
-                    <div className="mb-2 flex justify-end items-center gap-8">
-                    <div className="mb-2 flex justify-end items-center gap-1">
-                      <input
-                        type="checkbox"
-                        id="hide-homes"
-                        checked={hideHomes}
-                        onChange={e => setHideHomes(e.target.checked)}
-                        className="accent-primary"
-                      />
-                      <label htmlFor="hide-homes" className="text-sm select-none cursor-pointer mr-1">
-                        Hide Homepages
-                      </label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="cursor-pointer text-primary"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><circle cx="8" cy="8" r="8" fill="#e9e9e9"/><text x="8" y="12" textAnchor="middle" fontSize="10" fill="#333">i</text></svg></span>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="bg-white border shadow-lg p-2 rounded text-xs max-w-xs">
-                          Si está activado, se ocultarán los enlaces que apunten a la página principal (home) de los dominios, mostrando solo URLs internas o específicas.
-                        </TooltipContent>
-                      </Tooltip>
-                      </div>
+            </CardHeader>
+              <Card>
+
+              <CardContent className="pt-4">
+                <Tabs defaultValue="brands">
+                  <TabsList className="rounded-full gap-3">
+                    <TabsTrigger value="brands">Marcas y posición media</TabsTrigger>
+                    <TabsTrigger value="prompts">Prompts</TabsTrigger>
+                    <TabsTrigger value="sources">Sources</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="brands">
+                    <div className="mb-2 flex justify-end items-center gap-2">
                       <select
-                        id="ia-select-sources"
+                        id="ia-select"
                         value={selectedIa || ""}
                         onChange={e => setSelectedIa(e.target.value || null)}
-                        className="border rounded px-2 py-1 text-sm"
+                        className="border rounded-full px-4 py-2 text-sm shadow-sm focus:ring-2 focus:ring-primary/30 transition-all"
                       >
                         <option value="">Todas las IAs</option>
                         {iaList.map(ia => (
@@ -583,71 +444,237 @@ export default function KeywordPage({ params }: KeywordPageProps) {
                         ))}
                       </select>
                     </div>
-                    {sourcesSorted.length === 0 ? (
-                      <div className="text-muted-foreground">No hay sources para esta keyword{selectedIa ? ` en la IA seleccionada` : ""}.</div>
+                    {brandsSorted.length === 0 ? (
+                      <div className="text-muted-foreground">No hay marcas para esta keyword{selectedIa ? ` en la IA seleccionada` : ""}.</div>
                     ) : (
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full border rounded-lg bg-white">
+                      <div className="overflow-x-auto  border rounded-xl">
+                        <table className="min-w-full bg-white">
                           <thead className="bg-muted">
                             <tr>
-                              <th className="px-4 py-2 text-right cursor-pointer select-none" onClick={() => setSourceSort(s => ({col: 'index', dir: s.col === 'index' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
-                                #
+                              <th className="px-4 py-2 text-left cursor-pointer select-none" onClick={() => setBrandSort(s => ({col: 'brand', dir: s.col === 'brand' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
+                                Marca {brandSort.col === 'brand' && (brandSort.dir === 'asc' ? '▲' : '▼')}
                               </th>
-                              <th className="px-4 py-2 text-left cursor-pointer select-none" onClick={() => setSourceSort(s => ({col: 'url', dir: s.col === 'url' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
-                                Source {sourceSort.col === 'url' && (sourceSort.dir === 'asc' ? '▲' : '▼')}
+                              <th className="px-4 py-2 text-right cursor-pointer select-none" onClick={() => setBrandSort(s => ({col: 'count', dir: s.col === 'count' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
+                                Apariciones {brandSort.col === 'count' && (brandSort.dir === 'asc' ? '▲' : '▼')}
                               </th>
-                              <th className="px-4 py-2 text-right cursor-pointer select-none" onClick={() => setSourceSort(s => ({col: 'shareOfVoice', dir: s.col === 'shareOfVoice' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
-                                Share of Voice (%) {sourceSort.col === 'shareOfVoice' && (sourceSort.dir === 'asc' ? '▲' : '▼')}
+                              <th className="px-4 py-2 text-right cursor-pointer select-none" onClick={() => setBrandSort(s => ({col: 'avgPos', dir: s.col === 'avgPos' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
+                                Posición media {brandSort.col === 'avgPos' && (brandSort.dir === 'asc' ? '▲' : '▼')}
                               </th>
-                              <th className="px-4 py-2 text-right cursor-pointer select-none" onClick={() => setSourceSort(s => ({col: 'brands', dir: s.col === 'brands' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
-                                Brands {sourceSort.col === 'brands' && (sourceSort.dir === 'asc' ? '▲' : '▼')}
+                              <th className="px-4 py-2 text-right cursor-pointer select-none" onClick={() => setBrandSort(s => ({col: 'shareOfVoice', dir: s.col === 'shareOfVoice' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
+                                Share of Voice (%) {brandSort.col === 'shareOfVoice' && (brandSort.dir === 'asc' ? '▲' : '▼')}
                               </th>
                             </tr>
                           </thead>
                           <tbody>
-                            {sourcesSorted
-                              .map((s, i) => ({...s, index: i + 1}))
-                              .map((s, i) => (
-                                <tr key={s.url} className="border-b last:border-b-0 hover:bg-muted/40">
-                                  <td className="px-4 py-2 text-right font-bold">{s.index}</td>
-                                  <td className="px-4 py-2 font-medium flex items-center gap-2">
-                                    {(() => {
-                                      const domain = getDomainFromUrl(s.url);
-                                      return domain ? (
-                                        <img src={`https://www.google.com/s2/favicons?domain=${domain}`} alt={domain} className="w-5 h-5 rounded" />
-                                      ) : null;
-                                    })()}
-                                    <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80">{s.url}</a>
-                                  </td>
-                                  <td className="px-4 py-2 text-right">{s.shareOfVoice.toFixed(1)}%</td>
-                                  <td className="px-4 py-2 text-right">
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <span className="cursor-pointer underline text-primary font-semibold">{s.brands.length}</span>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="top" className="bg-white border shadow-lg p-2 rounded text-xs max-w-xs">
-                                        <div className="font-bold mb-1">Marcas:</div>
-                                        <ul className="list-disc pl-4">
-                                          {s.brands.map((b, idx) => (
-                                            <li key={idx}>{b}</li>
-                                          ))}
-                                        </ul>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </td>
-                                </tr>
-                              ))}
+                            {brandsSorted.map(b => (
+                              <tr key={b.brand} className="border-b last:border-b-0 hover:bg-muted/40">
+                                <td className="px-4 py-2 font-semibold flex items-center gap-2">
+                                  {(() => {
+                                    const domain = getBrandDomain(b.brand);
+                                    return domain ? (
+                                      <img src={`https://www.google.com/s2/favicons?domain=${domain}`} alt={b.brand} className="w-5 h-5 rounded" />
+                                    ) : null;
+                                  })()}
+                                  {b.brand}
+                                </td>
+                                <td className="px-4 py-2 text-right">{b.count}</td>
+                                <td className="px-4 py-2 text-right">{b.avgPos.toFixed(2)}</td>
+                                <td className="px-4 py-2 text-right">
+                                  {b.shareOfVoice.toFixed(1)}%
+                                  <MiniBar percent={b.shareOfVoice} />
+                                </td>
+                              </tr>
+                            ))}
                           </tbody>
                         </table>
                       </div>
                     )}
-                  </TooltipProvider>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
-    </div>
+                  </TabsContent>
+                  <TabsContent value="prompts">
+                    <div className="space-y-2">
+                      {prompts.length === 0 && (
+                        <div className="text-muted-foreground px-4 py-2">No hay prompts para esta keyword.</div>
+                      )}
+                      {prompts.map((p, i) => {
+                        // ¿Alguna respuesta de este prompt menciona a Genially?
+                        const mentionsGenially = p.iaStats && Object.values(p.iaStats).some((ia) => ia.items.some((item: SampleDatasetItem) => {
+                          if (!item.json_content) return false;
+                          let tools: any[] = [];
+                          try { tools = JSON.parse(item.json_content); } catch {}
+                          return tools.some((tool: any) => (tool.name || tool.nombre || "").toLowerCase().includes("genially"));
+                        }));
+                        // Total marcas y sources
+                        let totalBrands = 0;
+                        let totalSources = 0;
+                        Object.values(p.iaStats).forEach((ia) => {
+                          ia.items.forEach((item: SampleDatasetItem) => {
+                            if (!item.json_content) return;
+                            let tools: any[] = [];
+                            try { tools = JSON.parse(item.json_content); } catch {}
+                            totalBrands += Array.isArray(tools) ? tools.length : 0;
+                            if (item.sources) {
+                              try {
+                                let src = item.sources;
+                                if (typeof src === "string" && src.trim().startsWith("[")) {
+                                  const arr = JSON.parse(src);
+                                  if (Array.isArray(arr)) totalSources += arr.length;
+                                } else {
+                                  totalSources += src.split(/,|;/).filter((s: string) => s.trim()).length;
+                                }
+                              } catch {
+                                totalSources += 1;
+                              }
+                            }
+                          });
+                        });
+                        return (
+                          <React.Fragment key={i}>
+                            <div
+                              className={`flex items-center gap-4 px-4 py-3 rounded-lg border hover:bg-muted/40 cursor-pointer transition-all ${openPrompt === p.prompt ? 'bg-muted/30' : ''}`}
+                              onClick={() => {
+                                setOpenPrompt(openPrompt === p.prompt ? null : p.prompt);
+                                setOpenIa(null);
+                              }}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-sm truncate">{p.prompt}</div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {mentionsGenially ? (
+                                  <span className="bg-green-100 text-green-700 rounded-full px-2 py-0.5 text-xs font-semibold flex items-center gap-1"><CheckCircle className="w-4 h-4" />Mentioned</span>
+                                ) : null}
+                                <span className="bg-blue-100 text-blue-700 rounded-full px-2 py-0.5 text-xs font-semibold">{totalBrands} Brands</span>
+                                <span className="bg-orange-100 text-orange-700 rounded-full px-2 py-0.5 text-xs font-semibold">{totalSources} Sources</span>
+                              </div>
+                            </div>
+                            {openPrompt === p.prompt && (
+                              <div className="bg-muted/40 rounded-lg p-4 mt-2 mb-2">
+                                {Object.entries((p.iaStats || {}) as Record<string, { marcas: number; sources: number; items: SampleDatasetItem[] }> ).map(
+                                  ([ia, stats]: [string, { marcas: number; sources: number; items: SampleDatasetItem[] }]) => (
+                                    <div key={ia} className="mb-4">
+                                      <div className="font-bold mb-1 flex items-center gap-2">
+                                        {getIaImage(ia) && <img src={getIaImage(ia)!} alt={ia} className="w-5 h-5 rounded-full" />}
+                                        {ia}
+                                      </div>
+                                      {stats.items.map((item: SampleDatasetItem, idx: number) => (
+                                        <div key={idx} className="mb-2 p-2 bg-white rounded shadow-sm border text-sm max-w-none prose prose-sm prose-p:mb-4 prose-a:underline prose-a:text-primary">
+                                          <ReactMarkdown>{item.content}</ReactMarkdown>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="sources">
+                    <TooltipProvider>
+                      <div className="mb-2 flex justify-end items-center gap-8">
+                      <div className="mb-2 flex justify-end items-center gap-1">
+                        <input
+                          type="checkbox"
+                          id="hide-homes"
+                          checked={hideHomes}
+                          onChange={e => setHideHomes(e.target.checked)}
+                          className="accent-primary"
+                        />
+                        <label htmlFor="hide-homes" className="text-sm select-none cursor-pointer mr-1">
+                          Hide Homepages
+                        </label>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="cursor-pointer text-primary"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><circle cx="8" cy="8" r="8" fill="#e9e9e9"/><text x="8" y="12" textAnchor="middle" fontSize="10" fill="#333">i</text></svg></span>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="bg-white border shadow-lg p-2 rounded text-xs max-w-xs">
+                            Si está activado, se ocultarán los enlaces que apunten a la página principal (home) de los dominios, mostrando solo URLs internas o específicas.
+                          </TooltipContent>
+                        </Tooltip>
+                        </div>
+                        <select
+                          id="ia-select-sources"
+                          value={selectedIa || ""}
+                          onChange={e => setSelectedIa(e.target.value || null)}
+                          className="border rounded-full px-4 py-2 text-sm shadow-sm focus:ring-2 focus:ring-primary/30 transition-all"
+                        >
+                          <option value="">Todas las IAs</option>
+                          {iaList.map(ia => (
+                            <option key={ia} value={ia}>{ia}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {sourcesSorted.length === 0 ? (
+                        <div className="text-muted-foreground">No hay sources para esta keyword{selectedIa ? ` en la IA seleccionada` : ""}.</div>
+                      ) : (
+                        <div className="overflow-x-auto  border rounded-xl">
+                          <table className="min-w-full bg-white">
+                            <thead className="bg-muted">
+                              <tr>
+                                <th className="px-4 py-2 text-right cursor-pointer select-none" onClick={() => setSourceSort(s => ({col: 'index', dir: s.col === 'index' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
+                                  #
+                                </th>
+                                <th className="px-4 py-2 text-left cursor-pointer select-none" onClick={() => setSourceSort(s => ({col: 'url', dir: s.col === 'url' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
+                                  Source {sourceSort.col === 'url' && (sourceSort.dir === 'asc' ? '▲' : '▼')}
+                                </th>
+                                <th className="px-4 w-48 py-2 text-right cursor-pointer select-none" onClick={() => setSourceSort(s => ({col: 'shareOfVoice', dir: s.col === 'shareOfVoice' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
+                                  Share of Voice (%) {sourceSort.col === 'shareOfVoice' && (sourceSort.dir === 'asc' ? '▲' : '▼')}
+                                </th>
+                                <th className="px-4 py-2 text-right cursor-pointer select-none" onClick={() => setSourceSort(s => ({col: 'brands', dir: s.col === 'brands' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
+                                  Brands {sourceSort.col === 'brands' && (sourceSort.dir === 'asc' ? '▲' : '▼')}
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {sourcesSorted
+                                .map((s, i) => ({...s, index: i + 1}))
+                                .map((s, i) => (
+                                  <tr key={s.url} className="border-b last:border-b-0 hover:bg-muted/40">
+                                    <td className="px-4 py-2 text-right font-bold">{s.index}</td>
+                                    <td className="px-4 py-2 font-medium flex items-center gap-2">
+                                      {(() => {
+                                        const domain = getDomainFromUrl(s.url);
+                                        return domain ? (
+                                          <img src={`https://www.google.com/s2/favicons?domain=${domain}`} alt={domain} className="w-5 h-5 rounded" />
+                                        ) : null;
+                                      })()}
+                                      <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80">{s.url}</a>
+                                    </td>
+                                    <td className="px-4 py-2 text-right">
+                                      {s.shareOfVoice.toFixed(1)}%
+                                      <MiniBar percent={s.shareOfVoice} />
+                                    </td>
+                                    <td className="px-4 py-2 text-right">
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="cursor-pointer underline text-primary font-semibold">{s.brands.length}</span>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="bg-white border shadow-lg p-2 rounded text-xs max-w-xs">
+                                          <div className="font-bold mb-1">Marcas:</div>
+                                          <ul className="list-disc pl-4">
+                                            {s.brands.map((b, idx) => (
+                                              <li key={idx}>{b}</li>
+                                            ))}
+                                          </ul>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </td>
+                                  </tr>
+                                ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </TooltipProvider>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+      </div>
+    </>
   );
 } 
