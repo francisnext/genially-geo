@@ -10,21 +10,20 @@ export default function DebilidadesOportunidadesPage() {
       {/* Menú lateral */}
       <SidebarMenu />
       <main className="flex-1 p-4 flex items-center justify-center">
-        <div className="w-full max-w-4xl mx-auto space-y-6">
+        <div className="w-full max-w-7xl mx-auto space-y-6">
           <Card className="md:col-span-2">
             <CardHeader>
               <CardTitle>Debilidades y Oportunidades</CardTitle>
-              <CardDescription>Principales debilidades detectadas y oportunidades de mejora para Genially</CardDescription>
+              <CardDescription>En base al análisis y mediante IA, debilidades detectadas y oportunidades de mejora para Genially</CardDescription>
             </CardHeader>
             <CardContent>
               {/* Tabla de Debilidades */}
               <div className="mb-8 w-full">
-                <h4 className="font-semibold mb-2">Debilidades</h4>
                 <div className="rounded-lg border overflow-y-auto max-h-96 bg-background w-full">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-card border-b border-border sticky top-0">
-                        <th className="text-left p-2">Debilidad</th>
+                        <th className="text-left p-2">Debilidades y Oportunidades</th>
                         <th className="text-left p-2">Prioridad</th>
                       </tr>
                     </thead>
@@ -54,12 +53,11 @@ export default function DebilidadesOportunidadesPage() {
               </div>
               {/* Tabla de Oportunidades */}
               <div className="w-full">
-                <h4 className="font-semibold mb-2">Oportunidades y Estrategias</h4>
                 <div className="rounded-lg border overflow-y-auto max-h-96 bg-background w-full">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-card border-b border-border sticky top-0">
-                        <th className="text-left p-2">Acción</th>
+                        <th className="text-left p-2">Oportunidades y Estrategias</th>
                         <th className="text-left p-2">Coste</th>
                         <th className="text-left p-2">Prioridad</th>
                       </tr>

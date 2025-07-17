@@ -1,56 +1,65 @@
 {
   "debilidades": [
     {
-      "descripcion": "No aparece en directorios clave como G2, Capterra, TrustRadius o eLearningIndustry en categorías como e-learning o authoring tools, donde competidores como Articulate, Adobe Captivate o iSpring están muy bien posicionados.",
+      "descripcion": "No aparece en directorios clave como G2, Capterra, TrustRadius o eLearningIndustry en categorías como e-learning o authoring tools.",
       "prioridad": "alta"
     },
     {
-      "descripcion": "Falta de contenido optimizado en la web para keywords críticas del sector como 'SCORM', 'LTI', 'xAPI', 'software de simulaciones', o 'VR training tools', que sí dominan competidores como Storyline 360 o Captivate.",
+      "descripcion": "Falta de enfoque en términos clave como 'SCORM', 'LTI', 'authoring tool' o 'learning management system' en el contenido.",
       "prioridad": "alta"
     },
     {
-      "descripcion": "Bajo enfoque en aspectos técnicos para instructional designers avanzados: no se destaca personalización por variables, triggers, ni simulaciones complejas como lo hace Articulate Storyline o Lectora Inspire.",
+      "descripcion": "Gran cantidad de URLs indexadas con bajo contenido optimizado para SEO transaccional (plantillas, recursos, ejemplos), sin intención clara.",
       "prioridad": "media"
     },
     {
-      "descripcion": "Algunas de las páginas en el sitemap están orientadas a términos de marca y marketing genérico, pero no abordan búsquedas informacionales concretas del sector L&D como 'herramientas de microlearning' o 'crear contenido interactivo para Moodle'.",
+      "descripcion": "Limitado uso de long-tails orientados a 'interactive training', 'corporate e-learning', 'gamification in learning'.",
       "prioridad": "media"
     },
     {
-      "descripcion": "No se ha aprovechado el potencial SEO multilingüe con estructuras canónicas claras o hreflang adecuados en el sitemap, a pesar de tener contenido duplicado en varios idiomas.",
+      "descripcion": "Falta de páginas específicas orientadas a industrias verticales (educación, salud, finanzas) con contenido especializado.",
+      "prioridad": "media"
+    },
+    {
+      "descripcion": "Falta de enlazado interno robusto entre los contenidos educativos (blog, templates, academy).",
       "prioridad": "baja"
     }
   ],
   "estrategias_y_oportunidades": [
     {
-      "accion": "Optimizar contenido existente y crear nuevas páginas que integren keywords clave como 'SCORM', 'xAPI', 'interactive learning simulations', 'LTI compatible content', etc.",
+      "accion": "Optimizar contenido existente con términos como 'SCORM', 'LTI', 'interactive training', 'gamification in learning'",
       "coste": "bajo",
       "prioridad": "alta"
     },
     {
-      "accion": "Dar de alta Genially en directorios relevantes como G2, Capterra, eLearningIndustry y TrustRadius en categorías de e-learning, content creation o instructional design tools.",
+      "accion": "Crear landings orientadas a industrias clave (educación, salud, finanzas, corporativo) con contenido adaptado",
       "coste": "medio",
       "prioridad": "alta"
     },
     {
-      "accion": "Desarrollar casos de uso y páginas específicas para instructional designers con enfoque técnico (simulaciones, escenarios ramificados, LMS integraciones).",
+      "accion": "Registrar y posicionarse en directorios de software como G2, Capterra, TrustRadius, eLearningIndustry",
       "coste": "medio",
-      "prioridad": "media"
-    },
-    {
-      "accion": "Crear una estrategia de contenidos centrada en búsquedas informacionales como 'mejores herramientas para crear contenido interactivo', 'alternativas a Articulate', o 'cómo crear gamificación educativa'.",
-      "coste": "bajo",
       "prioridad": "alta"
     },
     {
-      "accion": "Implementar hreflang y canónicas correctamente para evitar canibalización y duplicación de contenidos multilingües.",
-      "coste": "medio",
+      "accion": "Aprovechar las plantillas indexadas para agruparlas en clústeres temáticos SEO (ej: 'templates for online courses')",
+      "coste": "bajo",
       "prioridad": "media"
     },
     {
-      "accion": "Aprovechar las plantillas y ejemplos del sitemap para generar enlaces internos contextuales y clusters temáticos en torno a 'microlearning', 'gamificación', 'presentaciones educativas interactivas', etc.",
+      "accion": "Reforzar el enlazado interno entre blog, academia y páginas de producto",
       "coste": "bajo",
       "prioridad": "media"
+    },
+    {
+      "accion": "Desarrollar artículos orientados a búsquedas long-tail transaccionales ('best authoring tool for schools', etc.)",
+      "coste": "bajo",
+      "prioridad": "media"
+    },
+    {
+      "accion": "Internacionalizar las estrategias SEO para mercados clave como EE.UU., LATAM y Europa",
+      "coste": "alto",
+      "prioridad": "alta"
     }
   ]
 }

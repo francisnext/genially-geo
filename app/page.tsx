@@ -88,6 +88,81 @@ const COLORS = [
 
 const CORRECT_PASSWORD = "GeniallyTeam2025**"
 
+// Función auxiliar para obtener el dominio de una marca
+const BRAND_DOMAIN_MAP: Record<string, string> = {
+  'Genially': 'genially.com',
+  'H5P': 'h5p.org',
+  'Typeform': 'typeform.com',
+  'Kahoot!': 'kahoot.com',
+  'ThingLink': 'thinglink.com',
+  'Quizizz': 'quizizz.com',
+  'Outgrow': 'outgrow.co',
+  'LearningApps.org': 'learningapps.org',
+  'Google Forms': 'forms.google.com',
+  'Nearpod': 'nearpod.com',
+  'Articulate 360 (Storyline & Rise)': 'articulate.com',
+  'Thinglink': 'thinglink.com',
+  'Mentimeter': 'mentimeter.com',
+  'Eko': 'eko.com',
+  'Ceros': 'ceros.com',
+  'Prezi': 'prezi.com',
+  'Articulate Rise 360': 'articulate.com',
+  'Quizlet': 'quizlet.com',
+  'Dot.vu': 'dot.vu',
+  'Canva': 'canva.com',
+  'Vyond': 'vyond.com',
+  'Socrative': 'socrative.com',
+  'Adobe Captivate': 'adobe.com',
+};
+function getBrandDomain(brand: string): string | null {
+  const match = brand.match(/([a-zA-Z0-9-]+\.[a-zA-Z]{2,})$/);
+  if (match) return match[1];
+  const found = Object.entries(BRAND_DOMAIN_MAP).find(([key]) => key.toLowerCase() === brand.toLowerCase());
+  if (found) return found[1];
+  return null;
+}
+
+// Calcular métricas por keyword
+function getKeywordStats(keyword: string) {
+  const items = SAMPLE_DATASET.filter(item => (item.keyword || '').toLowerCase() === keyword.toLowerCase());
+  let geniallyPositions: number[] = [];
+  let geniallyMentions = 0;
+  let totalMentions = 0;
+  const brandCount: Record<string, { count: number; avgPos: number }> = {};
+  items.forEach(item => {
+    if (!item.json_content) return;
+    let tools: any[] = [];
+    try { tools = JSON.parse(item.json_content); } catch {}
+    tools.forEach(tool => {
+      const name = tool.name || tool.nombre;
+      const pos = tool.position || tool.posicion || 0;
+      if (!name) return;
+      if (!brandCount[name]) brandCount[name] = { count: 0, avgPos: 0 };
+      brandCount[name].count++;
+      brandCount[name].avgPos += Number(pos) || 0;
+      totalMentions++;
+      if (name.toLowerCase().includes('genially')) {
+        geniallyMentions++;
+        if (pos) geniallyPositions.push(Number(pos));
+      }
+    });
+  });
+  // Calcular posición media de Genially
+  const geniallyAvgPos = geniallyPositions.length > 0 ? (geniallyPositions.reduce((a, b) => a + b, 0) / geniallyPositions.length) : null;
+  // Calcular share of voice de Genially
+  const geniallyShare = totalMentions > 0 ? (geniallyMentions / totalMentions) * 100 : null;
+  // Top 3 marcas por count
+  const topBrands = Object.entries(brandCount)
+    .map(([brand, data]) => ({ brand, count: data.count, avgPos: data.count > 0 ? data.avgPos / data.count : 0 }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3);
+  return {
+    geniallyAvgPos,
+    geniallyShare,
+    topBrands,
+  };
+}
+
 export default function MarketShareAnalyzer() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [password, setPassword] = useState("")
@@ -429,11 +504,11 @@ export default function MarketShareAnalyzer() {
         tools = item.json_content ? JSON.parse(item.json_content) : [];
       } catch {}
       tools.forEach((tool) => {
-        const brand = tool.name || tool.nombre || "";
-        if (brand && topBrands.includes(brand)) {
-          weekBrandCount[weekKey][brand] = (weekBrandCount[weekKey][brand] || 0) + 1;
-        }
-      });
+          const brand = tool.name || tool.nombre || "";
+          if (brand && topBrands.includes(brand)) {
+            weekBrandCount[weekKey][brand] = (weekBrandCount[weekKey][brand] || 0) + 1;
+          }
+        });
     });
 
     // Convertir a array de objetos para Recharts, ordenado por semana
@@ -513,7 +588,7 @@ export default function MarketShareAnalyzer() {
       {/* Menú lateral */}
       <SidebarMenu />
       <main className="flex-1 p-4">
-        <div className="max-w-8xl mx-auto space-y-6" suppressHydrationWarning>
+        <div className="max-w-7xl mx-auto space-y-6" suppressHydrationWarning>
           <div className="text-center space-y-2" suppressHydrationWarning>
             <h1 className="text-3xl font-bold text-foreground">Análisis GEO de Genially</h1>
             <p className="text-muted-foreground">Analiza el market share de Genially y sus competidores en diferentes LLMs</p>
@@ -522,39 +597,67 @@ export default function MarketShareAnalyzer() {
           {/* Listado de keywords únicas */}
                 <Card>
                   <CardHeader>
-              <CardTitle>Keywords únicas en el dataset</CardTitle>
-              <CardDescription>Lista de todas las keywords encontradas en el dataset</CardDescription>
+              <CardTitle>Keywordst</CardTitle>
                   </CardHeader>
                   <CardContent>
               <div className="overflow-x-auto">
                 <table className="min-w-full border rounded-lg bg-white">
                   <thead className="bg-muted">
                     <tr>
-                      <th className="px-2 py-2 text-left w-20">#</th>
                       <th className="px-4 py-2 text-left">Keyword</th>
-                          </tr>
-                        </thead>
-                        <tbody>
+                      <th className="px-4 py-2 text-right">Rank</th>
+                      <th className="px-4 py-2 text-right">Share of Voice</th>
+                      <th className="px-4 py-2 text-center">Top Brands</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                     {uniqueKeywords.length === 0 && (
-                      <tr><td colSpan={2} className="text-muted-foreground px-4 py-2">No hay keywords.</td></tr>
+                      <tr><td colSpan={5} className="text-muted-foreground px-4 py-2">No hay keywords.</td></tr>
                     )}
-                    {uniqueKeywords.map((kw, idx) => (
-                      <tr
-                        key={kw}
-                        className="border-b last:border-b-0 hover:bg-muted/40 cursor-pointer"
-                        onClick={() => router.push(`/keyword/${encodeURIComponent(kw)}`)}
-                      >
-                        <td className="px-4 py-2 text-left font-bold">{idx + 1}</td>
-                        <td className="px-4 py-2 text-left">
-                          {kw}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </CardContent>
-                </Card>
+                    {uniqueKeywords.map((kw, idx) => {
+                      const stats = getKeywordStats(kw);
+                      return (
+                        <tr
+                          key={kw}
+                          className="border-b last:border-b-0 hover:bg-muted/40 cursor-pointer"
+                          onClick={() => router.push(`/keyword/${encodeURIComponent(kw)}`)}
+                        >
+                          <td className="px-4 py-2 text-left">{kw}</td>
+                          <td className="px-4 py-2 text-right">{stats.geniallyAvgPos !== null ? stats.geniallyAvgPos.toFixed(2) : '-'}</td>
+                          <td className="px-4 py-2 text-right">{stats.geniallyShare !== null ? stats.geniallyShare.toFixed(1) + '%' : '-'}</td>
+                          <td className="px-4 py-2 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              {stats.topBrands.map((b, i) => {
+                                const domain = getBrandDomain(b.brand);
+                                return (
+                                  <Popover key={b.brand}>
+                                    <PopoverTrigger asChild>
+                                      <span className="inline-block">
+                                        <Badge variant="secondary" className="p-0 bg-white border shadow hover:bg-primary/10">
+                                          {domain ? (
+                                            <img src={`https://www.google.com/s2/favicons?domain=${domain}`} alt={b.brand} className="w-6 h-6 rounded-full" />
+                                          ) : (
+                                            <span className="w-6 h-6 flex items-center justify-center font-bold text-xs">{b.brand[0]}</span>
+                                          )}
+                                        </Badge>
+                                      </span>
+                                    </PopoverTrigger>
+                                    <PopoverContent side="top" className="bg-white border shadow-lg p-2 rounded text-xs max-w-xs">
+                                      {b.brand}
+                                    </PopoverContent>
+                                  </Popover>
+                                );
+                              })}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Eliminar la Card de Debilidades y Oportunidades de la página principal */}
           

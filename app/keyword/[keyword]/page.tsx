@@ -242,6 +242,61 @@ function getDataForKeyword(keyword: string) {
   return { brands, prompts, sources: Object.keys(urlMap), sourcesEnriched, iaList, getBrandsByIa, getSourcesByIa };
 }
 
+// Añadir función auxiliar para obtener la imagen de la IA
+function getIaImage(ia: string): string | null {
+  if (/chatgpt|openai/i.test(ia)) return "/openai-chatgpt.webp";
+  if (/gemini|google/i.test(ia)) return "/google-gemini.webp";
+  return null;
+}
+
+// Mapping manual de marcas a dominios
+const BRAND_DOMAIN_MAP: Record<string, string> = {
+  'Genially': 'genially.com',
+  'H5P': 'h5p.org',
+  'Typeform': 'typeform.com',
+  'Kahoot!': 'kahoot.com',
+  'ThingLink': 'thinglink.com',
+  'Quizizz': 'quizizz.com',
+  'Outgrow': 'outgrow.co',
+  'LearningApps.org': 'learningapps.org',
+  'Google Forms': 'forms.google.com',
+  'Nearpod': 'nearpod.com',
+  'Articulate 360 (Storyline & Rise)': 'articulate.com',
+  'Thinglink': 'thinglink.com',
+  'Mentimeter': 'mentimeter.com',
+  'Eko': 'eko.com',
+  'Ceros': 'ceros.com',
+  'Prezi': 'prezi.com',
+  'Articulate Rise 360': 'articulate.com',
+  'Quizlet': 'quizlet.com',
+  'Dot.vu': 'dot.vu',
+  'Canva': 'canva.com',
+  'Vyond': 'vyond.com',
+  'Socrative': 'socrative.com',
+  'Adobe Captivate': 'adobe.com',
+};
+
+// Función auxiliar para obtener el dominio de la marca
+function getBrandDomain(brand: string): string | null {
+  // Buscar el dominio en el nombre
+  const match = brand.match(/([a-zA-Z0-9-]+\.[a-zA-Z]{2,})$/);
+  if (match) return match[1];
+  // Buscar en el mapping manual (case-insensitive)
+  const found = Object.entries(BRAND_DOMAIN_MAP).find(([key]) => key.toLowerCase() === brand.toLowerCase());
+  if (found) return found[1];
+  return null;
+}
+
+// Función auxiliar para obtener el dominio de una URL
+function getDomainFromUrl(url: string): string | null {
+  try {
+    const u = new URL(url);
+    return u.hostname;
+  } catch {
+    return null;
+  }
+}
+
 export default function KeywordPage({ params }: KeywordPageProps) {
   const { keyword } = params;
   if (!keyword) return notFound();
@@ -252,7 +307,62 @@ export default function KeywordPage({ params }: KeywordPageProps) {
   const [hideHomes, setHideHomes] = useState(true);
   const [selectedIa, setSelectedIa] = useState<string | null>(null);
 
+  // Estado para ordenación de la tabla de marcas
+  type BrandCol = 'brand' | 'count' | 'avgPos' | 'shareOfVoice';
+  const [brandSort, setBrandSort] = useState<{col: BrandCol, dir: 'asc'|'desc'}>({col: 'shareOfVoice', dir: 'desc'});
+  // Estado para ordenación de la tabla de prompts
+  type PromptCol = 'prompt' | 'totalTools' | 'totalSources';
+  const [promptSort, setPromptSort] = useState<{col: PromptCol, dir: 'asc'|'desc'}>({col: 'totalTools', dir: 'desc'});
+  // Estado para ordenación de la tabla de sources
+  type SourceCol = 'index' | 'url' | 'shareOfVoice' | 'brands';
+  const [sourceSort, setSourceSort] = useState<{col: SourceCol, dir: 'asc'|'desc'}>({col: 'shareOfVoice', dir: 'desc'});
+
   const brandsFiltered = getBrandsByIa(selectedIa);
+
+  // Ordenar marcas según el estado
+  const brandsSorted = [...brandsFiltered].sort((a, b) => {
+    const { col, dir } = brandSort;
+    let valA = a[col as BrandCol];
+    let valB = b[col as BrandCol];
+    if (typeof valA === 'string') valA = valA.toLowerCase();
+    if (typeof valB === 'string') valB = valB.toLowerCase();
+    if (valA < valB) return dir === 'asc' ? -1 : 1;
+    if (valA > valB) return dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+  // Ordenar prompts según el estado
+  const promptsSorted = [...prompts].sort((a, b) => {
+    const { col, dir } = promptSort;
+    let valA = a[col as PromptCol];
+    let valB = b[col as PromptCol];
+    if (typeof valA === 'string') valA = valA.toLowerCase();
+    if (typeof valB === 'string') valB = valB.toLowerCase();
+    if (valA < valB) return dir === 'asc' ? -1 : 1;
+    if (valA > valB) return dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+  // Ordenar sources según el estado
+  const sourcesSorted = [...getSourcesByIa(selectedIa)].sort((a, b) => {
+    const { col, dir } = sourceSort;
+    let valA: any;
+    let valB: any;
+    if (col === 'brands') {
+      valA = a.brands.length;
+      valB = b.brands.length;
+    } else if (col === 'index') {
+      // Ordenar por el índice original del array (no por propiedad)
+      valA = getSourcesByIa(selectedIa).indexOf(a);
+      valB = getSourcesByIa(selectedIa).indexOf(b);
+    } else {
+      valA = a[col as Exclude<SourceCol, 'brands' | 'index'>];
+      valB = b[col as Exclude<SourceCol, 'brands' | 'index'>];
+    }
+    if (typeof valA === 'string') valA = valA.toLowerCase();
+    if (typeof valB === 'string') valB = valB.toLowerCase();
+    if (valA < valB) return dir === 'asc' ? -1 : 1;
+    if (valA > valB) return dir === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -280,15 +390,17 @@ export default function KeywordPage({ params }: KeywordPageProps) {
     <div className="bg-[#F9F8FC] min-h-screen bg-gradient-to-br from-[var(--background)] to-[var(--primary)] flex">
       <SidebarMenu />
       <main className="flex-1 p-4">
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="max-w-7xl mx-auto space-y-6 pl-1">
           <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Keyword: {decodedKeyword}</CardTitle>
-                <Link href="/" className="ml-4 px-4 py-2 rounded bg-primary text-white hover:bg-primary/80 transition-colors text-sm font-semibold shadow">
-                  ← Volver a keywords
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Link href="/" className="px-2 py-1 rounded text-primary hover:bg-primary hover:text-white transition-colors text-lg font-bold focus:outline-none focus:ring-2 focus:ring-primary/50">
+                  ←
                 </Link>
+                <CardTitle>Keyword: {decodedKeyword}</CardTitle>
               </div>
-            </CardHeader>
+            </div>
+          </CardHeader>
             <Card>
             
             <CardContent className="pt-4">
@@ -299,37 +411,52 @@ export default function KeywordPage({ params }: KeywordPageProps) {
                   <TabsTrigger value="sources">Sources</TabsTrigger>
                 </TabsList>
                 <TabsContent value="brands">
-                  <div className="mb-2 flex items-center gap-2">
-                    <label htmlFor="ia-select" className="text-sm">Filtrar por IA:</label>
+                  <div className="mb-2 flex justify-end items-center gap-2">
                     <select
                       id="ia-select"
                       value={selectedIa || ""}
                       onChange={e => setSelectedIa(e.target.value || null)}
                       className="border rounded px-2 py-1 text-sm"
                     >
-                      <option value="">Todas</option>
+                      <option value="">Todas las IAs</option>
                       {iaList.map(ia => (
                         <option key={ia} value={ia}>{ia}</option>
                       ))}
                     </select>
                   </div>
-                  {brandsFiltered.length === 0 ? (
+                  {brandsSorted.length === 0 ? (
                     <div className="text-muted-foreground">No hay marcas para esta keyword{selectedIa ? ` en la IA seleccionada` : ""}.</div>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="min-w-full border rounded-lg bg-white">
                         <thead className="bg-muted">
                           <tr>
-                            <th className="px-4 py-2 text-left">Marca</th>
-                            <th className="px-4 py-2 text-right">Apariciones</th>
-                            <th className="px-4 py-2 text-right">Posición media</th>
-                            <th className="px-4 py-2 text-right">Share of Voice (%)</th>
+                            <th className="px-4 py-2 text-left cursor-pointer select-none" onClick={() => setBrandSort(s => ({col: 'brand', dir: s.col === 'brand' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
+                              Marca {brandSort.col === 'brand' && (brandSort.dir === 'asc' ? '▲' : '▼')}
+                            </th>
+                            <th className="px-4 py-2 text-right cursor-pointer select-none" onClick={() => setBrandSort(s => ({col: 'count', dir: s.col === 'count' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
+                              Apariciones {brandSort.col === 'count' && (brandSort.dir === 'asc' ? '▲' : '▼')}
+                            </th>
+                            <th className="px-4 py-2 text-right cursor-pointer select-none" onClick={() => setBrandSort(s => ({col: 'avgPos', dir: s.col === 'avgPos' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
+                              Posición media {brandSort.col === 'avgPos' && (brandSort.dir === 'asc' ? '▲' : '▼')}
+                            </th>
+                            <th className="px-4 py-2 text-right cursor-pointer select-none" onClick={() => setBrandSort(s => ({col: 'shareOfVoice', dir: s.col === 'shareOfVoice' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
+                              Share of Voice (%) {brandSort.col === 'shareOfVoice' && (brandSort.dir === 'asc' ? '▲' : '▼')}
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
-                          {brandsFiltered.map(b => (
+                          {brandsSorted.map(b => (
                             <tr key={b.brand} className="border-b last:border-b-0 hover:bg-muted/40">
-                              <td className="px-4 py-2 font-semibold">{b.brand}</td>
+                              <td className="px-4 py-2 font-semibold flex items-center gap-2">
+                                {(() => {
+                                  const domain = getBrandDomain(b.brand);
+                                  return domain ? (
+                                    <img src={`https://www.google.com/s2/favicons?domain=${domain}`} alt={b.brand} className="w-5 h-5 rounded" />
+                                  ) : null;
+                                })()}
+                                {b.brand}
+                              </td>
                               <td className="px-4 py-2 text-right">{b.count}</td>
                               <td className="px-4 py-2 text-right">{b.avgPos.toFixed(2)}</td>
                               <td className="px-4 py-2 text-right">{b.shareOfVoice.toFixed(1)}%</td>
@@ -345,16 +472,16 @@ export default function KeywordPage({ params }: KeywordPageProps) {
                     <table className="min-w-full border rounded-lg bg-white">
                       <thead className="bg-muted">
                         <tr>
-                          <th className="px-4 py-2 text-left">Prompt</th>
+                          <th className="px-2 py-2 text-left w-1/4 max-w-[180px] whitespace-nowrap">Prompt</th>
                           <th className="px-4 py-2 text-right"># Tools</th>
                           <th className="px-4 py-2 text-right"># Sources</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {prompts.length === 0 && (
+                        {promptsSorted.length === 0 && (
                           <tr><td colSpan={3} className="text-muted-foreground px-4 py-2">No hay prompts para esta keyword.</td></tr>
                         )}
-                        {prompts.map((p, i) => (
+                        {promptsSorted.map((p, i) => (
                           <React.Fragment key={i}>
                             <tr
                               className={`border-b last:border-b-0 hover:bg-muted/40 cursor-pointer ${openPrompt === p.prompt ? 'bg-muted/30' : ''}`}
@@ -364,8 +491,8 @@ export default function KeywordPage({ params }: KeywordPageProps) {
                               }}
                             >
                               <td className="px-4 py-2 font-semibold w-full">{p.prompt}</td>
-                              <td className="px-4 py-2 text-right">{p.totalTools}</td>
-                              <td className="px-4 py-2 text-right">{p.totalSources}</td>
+                              <td className="px-4 py-2 text-right min-w-[180px]">{p.totalTools}</td>
+                              <td className="px-4 py-2 text-right min-w-[180px]">{p.totalSources}</td>
                             </tr>
                             {openPrompt === p.prompt && (
                               <tr>
@@ -386,7 +513,10 @@ export default function KeywordPage({ params }: KeywordPageProps) {
                                               className="border-b last:border-b-0 hover:bg-muted/40 cursor-pointer"
                                               onClick={() => setOpenIa(openIa === ia ? null : ia)}
                                             >
-                                              <td className="px-3 py-1 font-medium">{ia}</td>
+                                              <td className="px-3 py-1 font-medium flex items-center gap-2">
+                                                {getIaImage(ia) && <img src={getIaImage(ia)!} alt={ia} className="w-5 h-5 rounded-full" />}
+                                                {ia}
+                                              </td>
                                               <td className="px-3 py-1 text-right">{stats.marcas}</td>
                                               <td className="px-3 py-1 text-right">{stats.sources}</td>
                                             </tr>
@@ -397,7 +527,7 @@ export default function KeywordPage({ params }: KeywordPageProps) {
                                                     .map(item => item.content)
                                                     .filter(Boolean)
                                                     .map((content, idx) => (
-                                                      <div key={idx} className="mb-4 p-4 bg-white rounded shadow-sm border text-sm prose prose-sm max-w-none">
+                                                      <div key={idx} className="mb-4 p-4 bg-white rounded shadow-sm border text-sm max-w-none prose prose-sm prose-p:mb-4 prose-a:underline prose-a:text-primary">
                                                         <ReactMarkdown>{content}</ReactMarkdown>
                                                       </div>
                                                     ))}
@@ -420,50 +550,73 @@ export default function KeywordPage({ params }: KeywordPageProps) {
                 </TabsContent>
                 <TabsContent value="sources">
                   <TooltipProvider>
-                    <div className="mb-2 flex items-center gap-2">
-                      <label htmlFor="ia-select-sources" className="text-sm">Filtrar por IA:</label>
+                    <div className="mb-2 flex justify-end items-center gap-8">
+                    <div className="mb-2 flex justify-end items-center gap-1">
+                      <input
+                        type="checkbox"
+                        id="hide-homes"
+                        checked={hideHomes}
+                        onChange={e => setHideHomes(e.target.checked)}
+                        className="accent-primary"
+                      />
+                      <label htmlFor="hide-homes" className="text-sm select-none cursor-pointer mr-1">
+                        Hide Homepages
+                      </label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="cursor-pointer text-primary"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><circle cx="8" cy="8" r="8" fill="#e9e9e9"/><text x="8" y="12" textAnchor="middle" fontSize="10" fill="#333">i</text></svg></span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="bg-white border shadow-lg p-2 rounded text-xs max-w-xs">
+                          Si está activado, se ocultarán los enlaces que apunten a la página principal (home) de los dominios, mostrando solo URLs internas o específicas.
+                        </TooltipContent>
+                      </Tooltip>
+                      </div>
                       <select
                         id="ia-select-sources"
                         value={selectedIa || ""}
                         onChange={e => setSelectedIa(e.target.value || null)}
                         className="border rounded px-2 py-1 text-sm"
                       >
-                        <option value="">Todas</option>
+                        <option value="">Todas las IAs</option>
                         {iaList.map(ia => (
                           <option key={ia} value={ia}>{ia}</option>
                         ))}
                       </select>
-                      <input
-                        type="checkbox"
-                        id="hide-homes"
-                        checked={hideHomes}
-                        onChange={e => setHideHomes(e.target.checked)}
-                        className="accent-primary ml-4"
-                      />
-                      <label htmlFor="hide-homes" className="text-sm select-none cursor-pointer">
-                        Ocultar enlaces a home (activado por defecto)
-                      </label>
                     </div>
-                    {getSourcesByIa(selectedIa).length === 0 ? (
+                    {sourcesSorted.length === 0 ? (
                       <div className="text-muted-foreground">No hay sources para esta keyword{selectedIa ? ` en la IA seleccionada` : ""}.</div>
                     ) : (
                       <div className="overflow-x-auto">
                         <table className="min-w-full border rounded-lg bg-white">
                           <thead className="bg-muted">
                             <tr>
-                              <th className="px-4 py-2 text-right">#</th>
-                              <th className="px-4 py-2 text-left">Source</th>
-                              <th className="px-4 py-2 text-right">Share of Voice (%)</th>
-                              <th className="px-4 py-2 text-right">Brands</th>
+                              <th className="px-4 py-2 text-right cursor-pointer select-none" onClick={() => setSourceSort(s => ({col: 'index', dir: s.col === 'index' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
+                                #
+                              </th>
+                              <th className="px-4 py-2 text-left cursor-pointer select-none" onClick={() => setSourceSort(s => ({col: 'url', dir: s.col === 'url' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
+                                Source {sourceSort.col === 'url' && (sourceSort.dir === 'asc' ? '▲' : '▼')}
+                              </th>
+                              <th className="px-4 py-2 text-right cursor-pointer select-none" onClick={() => setSourceSort(s => ({col: 'shareOfVoice', dir: s.col === 'shareOfVoice' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
+                                Share of Voice (%) {sourceSort.col === 'shareOfVoice' && (sourceSort.dir === 'asc' ? '▲' : '▼')}
+                              </th>
+                              <th className="px-4 py-2 text-right cursor-pointer select-none" onClick={() => setSourceSort(s => ({col: 'brands', dir: s.col === 'brands' && s.dir === 'asc' ? 'desc' : 'asc'}))}>
+                                Brands {sourceSort.col === 'brands' && (sourceSort.dir === 'asc' ? '▲' : '▼')}
+                              </th>
                             </tr>
                           </thead>
                           <tbody>
-                            {getSourcesByIa(selectedIa)
-                              .filter(s => !hideHomes || !isHomeUrl(s.url))
+                            {sourcesSorted
+                              .map((s, i) => ({...s, index: i + 1}))
                               .map((s, i) => (
                                 <tr key={s.url} className="border-b last:border-b-0 hover:bg-muted/40">
-                                  <td className="px-4 py-2 text-right font-bold">{i + 1}</td>
-                                  <td className="px-4 py-2 font-medium">
+                                  <td className="px-4 py-2 text-right font-bold">{s.index}</td>
+                                  <td className="px-4 py-2 font-medium flex items-center gap-2">
+                                    {(() => {
+                                      const domain = getDomainFromUrl(s.url);
+                                      return domain ? (
+                                        <img src={`https://www.google.com/s2/favicons?domain=${domain}`} alt={domain} className="w-5 h-5 rounded" />
+                                      ) : null;
+                                    })()}
                                     <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80">{s.url}</a>
                                   </td>
                                   <td className="px-4 py-2 text-right">{s.shareOfVoice.toFixed(1)}%</td>

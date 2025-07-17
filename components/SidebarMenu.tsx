@@ -12,7 +12,7 @@ export default function SidebarMenu() {
           href="/"
           style={{width: "auto"}}
           className={`flex items-center gap-3 px-4 py-2 my-1 ml-2 mr-2 font-semibold text-primary text-left transition-colors
-              ${pathname === "/" ? "bg-white rounded-xl shadow-sm" : "hover:bg-accent"}
+              ${pathname === "/" ? "bg-accent rounded-xl shadow-sm" : "hover:bg-accent  hover:rounded-xl"}
               pl-5 pr-3`}
         >
           <BarChart3 className="w-5 h-5 text-primary" />
@@ -21,8 +21,8 @@ export default function SidebarMenu() {
         <a
           href="/debilidades-oportunidades"
           style={{width: "auto"}}
-          className={`flex items-center gap-3 px-4 py-2 my-1 ml-2 mr-2 font-semibold text-primary text-left transition-colors
-              ${pathname.startsWith("/debilidades-oportunidades") ? "bg-white rounded-xl shadow-sm" : "hover:bg-accent"}
+          className={`flex items-center gap-3 px-4 py-2 my-1 ml-2 mr-2 font-semibold text-primary text-left  transition-colors
+              ${pathname.startsWith("/debilidades-oportunidades") ? "bg-accent rounded-xl shadow-sm" : "hover:bg-accent hover:rounded-xl"}
               pl-5 pr-3`}
         >
           <AlertTriangle className="w-5 h-5 text-primary" />
