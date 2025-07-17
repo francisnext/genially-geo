@@ -87,8 +87,6 @@ const COLORS = [
   "#D084D0",
 ]
 
-const CORRECT_PASSWORD = "GeniallyTeam2025**"
-
 // Función auxiliar para obtener el dominio de una marca
 const BRAND_DOMAIN_MAP: Record<string, string> = {
   'Genially': 'genially.com',
@@ -177,11 +175,48 @@ function MiniBar({ percent }: { percent: number }) {
 }
 
 export default function MarketShareAnalyzer() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [password, setPassword] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [authError, setAuthError] = useState("")
-  const [authLoading, setAuthLoading] = useState(false)
+  // --- AUTENTICACIÓN DESACTIVADA ---
+  // const [isAuthenticated, setIsAuthenticated] = useState(false)
+  // const [password, setPassword] = useState("")
+  // const [showPassword, setShowPassword] = useState(false)
+  // const [authError, setAuthError] = useState("")
+  // const [authLoading, setAuthLoading] = useState(false)
+
+  // const CORRECT_PASSWORD = "GeniallyTeam2025**"
+  // const handleLogin = () => { ... }
+  // const handleKeyPress = (e: React.KeyboardEvent) => { ... }
+
+  // if (!isAuthenticated) {
+  //   return (
+  //     <>
+  //       <Topbar />
+  //       <div className="min-h-screen bg-gradient-to-br bg-[#F9F8FC] from-[var(--background)] to-[var(--primary)] flex items-center justify-center p-4" suppressHydrationWarning>
+  //         <Card className="w-full max-w-md bg-[#F9F8FC] border-none shadow-none">
+  //           <CardHeader className="text-center space-y-4">
+  //             <img src="/favicon.png" alt="Genially Logo" className="mx-auto w-10 h-10 mb-4" />
+  //             <div suppressHydrationWarning>
+  //               <CardTitle className="text-2xl text-foreground">Acceso Restringido</CardTitle>
+  //             </div>
+  //           </CardHeader>
+  //           <CardContent className="space-y-4">
+  //             <div className="space-y-2">
+  //               <div className="relative">
+  //                 <Input ... />
+  //                 <Button ... >...</Button>
+  //               </div>
+  //             </div>
+  //             {authError && (<Alert ...>{authError}</Alert>)}
+  //             <Button ... >...</Button>
+  //             <div className="text-center text-sm text-muted-foreground" suppressHydrationWarning>
+  //               <p>Herramienta interna del equipo Genially</p>
+  //             </div>
+  //           </CardContent>
+  //         </Card>
+  //       </div>
+  //     </>
+  //   )
+  // }
+  // --- FIN AUTENTICACIÓN DESACTIVADA ---
 
   const [apiKey, setApiKey] = useState("genially-team-2025")
   const [error, setError] = useState("")
@@ -193,29 +228,29 @@ export default function MarketShareAnalyzer() {
   const router = useRouter();
 
   // Al autenticar, carga automáticamente el SAMPLE_DATASET
-  const handleLogin = () => {
-    setAuthLoading(true)
-    setAuthError("")
+  // const handleLogin = () => {
+  //   setAuthLoading(true)
+  //   setAuthError("")
 
-    setTimeout(() => {
-      if (password === CORRECT_PASSWORD) {
-        setIsAuthenticated(true)
-        setAuthError("")
-        setTimeout(() => {
-          analyzeData()
-        }, 100)
-      } else {
-        setAuthError("Contraseña incorrecta. Inténtalo de nuevo.")
-      }
-      setAuthLoading(false)
-    }, 500)
-  }
+  //   setTimeout(() => {
+  //     if (password === CORRECT_PASSWORD) {
+  //       setIsAuthenticated(true)
+  //       setAuthError("")
+  //       setTimeout(() => {
+  //         analyzeData()
+  //       }, 100)
+  //     } else {
+  //       setAuthError("Contraseña incorrecta. Inténtalo de nuevo.")
+  //     }
+  //     setAuthLoading(false)
+  //   }, 500)
+  // }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleLogin()
-    }
-  }
+  // const handleKeyPress = (e: React.KeyboardEvent) => {
+  //   if (e.key === "Enter") {
+  //     handleLogin()
+  //   }
+  // }
 
   // Solo usa SAMPLE_DATASET, elimina la opción de analizar JSON manualmente
   const analyzeData = () => {
@@ -541,62 +576,62 @@ export default function MarketShareAnalyzer() {
   const uniqueKeywords = getUniqueKeywords();
 
   // Pantalla de login
-  if (!isAuthenticated) {
-    return (
-      <>
-        <Topbar />
-        <div className="min-h-screen bg-gradient-to-br bg-[#F9F8FC] from-[var(--background)] to-[var(--primary)] flex items-center justify-center p-4" suppressHydrationWarning>
-          <Card className="w-full max-w-md bg-[#F9F8FC] border-none shadow-none">
-            <CardHeader className="text-center space-y-4">
-              <img src="/favicon.png" alt="Genially Logo" className="mx-auto w-10 h-10 mb-4" />
-              <div suppressHydrationWarning>
-                <CardTitle className="text-2xl text-foreground">Acceso Restringido</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
+  // if (!isAuthenticated) {
+  //   return (
+  //     <>
+  //       <Topbar />
+  //       <div className="min-h-screen bg-gradient-to-br bg-[#F9F8FC] from-[var(--background)] to-[var(--primary)] flex items-center justify-center p-4" suppressHydrationWarning>
+  //         <Card className="w-full max-w-md bg-[#F9F8FC] border-none shadow-none">
+  //           <CardHeader className="text-center space-y-4">
+  //             <img src="/favicon.png" alt="Genially Logo" className="mx-auto w-10 h-10 mb-4" />
+  //             <div suppressHydrationWarning>
+  //               <CardTitle className="text-2xl text-foreground">Acceso Restringido</CardTitle>
+  //             </div>
+  //           </CardHeader>
+  //           <CardContent className="space-y-4">
+  //             <div className="space-y-2">
                 
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Ingresa la contraseña..."
-                    className="pr-10"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
+  //               <div className="relative">
+  //                 <Input
+  //                   id="password"
+  //                   type={showPassword ? "text" : "password"}
+  //                   value={password}
+  //                   onChange={(e) => setPassword(e.target.value)}
+  //                   onKeyPress={handleKeyPress}
+  //                   placeholder="Ingresa la contraseña..."
+  //                   className="pr-10"
+  //                 />
+  //                 <Button
+  //                   type="button"
+  //                   variant="ghost"
+  //                   size="sm"
+  //                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+  //                   onClick={() => setShowPassword(!showPassword)}
+  //                 >
+  //                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+  //                 </Button>
+  //               </div>
+  //             </div>
 
-              {authError && (
-                <Alert variant="destructive">
-                  <AlertDescription>{authError}</AlertDescription>
-                </Alert>
-              )}
+  //             {authError && (
+  //               <Alert variant="destructive">
+  //                 <AlertDescription>{authError}</AlertDescription>
+  //               </Alert>
+  //             )}
 
-              <Button onClick={handleLogin} disabled={!password.trim() || authLoading} className="w-full bg-[#6C29FF] rounded-full">
-                {authLoading ? "Verificando..." : "Acceder"}
-              </Button>
+  //             <Button onClick={handleLogin} disabled={!password.trim() || authLoading} className="w-full bg-[#6C29FF] rounded-full">
+  //               {authLoading ? "Verificando..." : "Acceder"}
+  //             </Button>
 
-              <div className="text-center text-sm text-muted-foreground" suppressHydrationWarning>
-                <p>Herramienta interna del equipo Genially</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </>
-    )
-  }
+  //             <div className="text-center text-sm text-muted-foreground" suppressHydrationWarning>
+  //               <p>Herramienta interna del equipo Genially</p>
+  //             </div>
+  //           </CardContent>
+  //         </Card>
+  //       </div>
+  //     </>
+  //   )
+  // }
 
   // Aplicación principal (solo se muestra después de autenticarse)
   return (
