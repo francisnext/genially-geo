@@ -13,8 +13,8 @@ export default function DebilidadesOportunidadesPage() {
         {/* Menú lateral */}
         <SidebarMenu />
         <main className="flex-1 p-4 flex items-center justify-center">
-          <div className="w-full max-w-7xl mx-auto space-y-6">
-            <Card className="md:col-span-2">
+          <div className="w-full max-w-8xl mx-auto space-y-6">
+            <Card className="md:col-span-2 bg-transparent shadow-none border-none">
               <CardHeader>
                 <CardTitle>Debilidades y Oportunidades</CardTitle>
                 <CardDescription>En base al análisis y mediante IA, debilidades detectadas y oportunidades de mejora para Genially</CardDescription>

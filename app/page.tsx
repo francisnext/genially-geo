@@ -641,21 +641,21 @@ export default function MarketShareAnalyzer() {
         {/* Menú lateral */}
         <SidebarMenu />
         <main className="flex-1 p-4">
-          <div className="max-w-7xl mx-auto space-y-6" suppressHydrationWarning>
+          <div className="max-w-8xl mx-auto space-y-6" suppressHydrationWarning>
             
 
             {/* Listado de keywords únicas */}
-                    <Card>
+                    <Card className="bg-transparent shadow-none border-none">
                       <CardHeader>
-                <CardTitle>Keywords</CardTitle>
-                <CardDescription>Palabras clave analizadas para medir la visibilidad de Genially.</CardDescription>
+                <CardTitle>Clusters</CardTitle>
+                <CardDescription>Clusters de palabras clave analizadas para medir la visibilidad de Genially.</CardDescription>
                       </CardHeader>
                       <CardContent>
                 <div className="overflow-x-auto border rounded-xl">
                   <table className="min-w-full bg-white">
                     <thead className="bg-muted">
                       <tr>
-                        <th className="px-4 py-2 text-left">Keyword</th>
+                        <th className="px-4 py-2 text-left">Clusters</th>
                         <th className="px-4 py-2 text-right">Rank</th>
                         <th className="px-2 py-2 text-right w-28">Share of Voice</th>
                         <th className="px-4 py-2 text-center">Top Brands</th>

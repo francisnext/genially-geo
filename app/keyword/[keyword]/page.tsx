@@ -410,7 +410,7 @@ export default function KeywordPage({ params }: KeywordPageProps) {
       <div className="bg-[#F9F8FC] min-h-screen bg-gradient-to-br from-[var(--background)] to-[var(--primary)] flex">
         <SidebarMenu />
         <main className="flex-1 p-4">
-          <div className="max-w-7xl mx-auto space-y-6 pl-1">
+          <div className="max-w-8xl mx-auto space-y-2 pl-1">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -421,7 +421,7 @@ export default function KeywordPage({ params }: KeywordPageProps) {
                 </div>
               </div>
             </CardHeader>
-              <Card>
+              <Card  className="bg-transparent shadow-none border-none">
 
               <CardContent className="pt-4">
                 <Tabs defaultValue="brands">
@@ -530,7 +530,7 @@ export default function KeywordPage({ params }: KeywordPageProps) {
                         return (
                           <React.Fragment key={i}>
                             <div
-                              className={`flex items-center gap-4 px-4 py-3 rounded-lg border hover:bg-muted/40 cursor-pointer transition-all ${openPrompt === p.prompt ? 'bg-muted/30' : ''}`}
+                              className={`bg-white flex items-center gap-4 px-4 py-3 rounded-lg border hover:bg-muted/40 cursor-pointer transition-all ${openPrompt === p.prompt ? 'bg-muted/30' : ''}`}
                               onClick={() => {
                                 setOpenPrompt(openPrompt === p.prompt ? null : p.prompt);
                                 setOpenIa(null);

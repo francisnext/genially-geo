@@ -10,28 +10,38 @@ export default function SidebarMenu() {
         <a
           href="/"
           style={{width: "auto"}}
-          className={`flex items-center gap-3 px-4 py-2 my-1 ml-2 mr-2 font-semibold text-primary text-left transition-colors
+          className={`flex items-center gap-3 px-2 py-2 my-1 ml-1 mr-1 font-semibold text-primary text-left transition-colors
               ${pathname === "/" ? "bg-accent rounded-xl shadow-sm" : "hover:bg-accent  hover:rounded-xl"}
-              pl-5 pr-3`}
+              pr-3 text-sm`}
         >
           <BarChart3 className="w-5 h-5 text-primary" />
-          Análisis
+          Análisis de prompts
         </a>
         <a
           href="/debilidades-oportunidades"
           style={{width: "auto"}}
-          className={`flex items-center gap-3 px-4 py-2 my-1 ml-2 mr-2 font-semibold text-primary text-left  transition-colors
+          className={`flex items-center gap-3 px-2 py-2 my-1 ml-1 mr-1 font-semibold text-primary text-left  transition-colors
               ${pathname.startsWith("/debilidades-oportunidades") ? "bg-accent rounded-xl shadow-sm" : "hover:bg-accent hover:rounded-xl"}
-              pl-5 pr-3`}
+              pr-3 text-sm`}
         >
           <AlertTriangle className="w-5 h-5 text-primary" />
-          Debilidades y Oportunidades
+          Análisis de Oportunidades
+        </a>
+        <a
+          href="/analisis-competidores"
+          style={{width: "auto"}}
+          className={`flex items-center gap-3 px-2 py-2 my-1 ml-1 mr-1 font-semibold text-primary text-left  transition-colors
+              ${pathname.startsWith("/analisis-competidores") ? "bg-accent rounded-xl shadow-sm" : "hover:bg-accent hover:rounded-xl"}
+               pr-3 text-sm`}
+        >
+          <Layers className="w-5 h-5 text-primary" />
+          Análisis de competidores
         </a>
         <a
           href="https://app.clickup.com/20487880/v/dc/kh7p8-79352/kh7p8-278212"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-3 px-4 py-2 my-1 ml-2 mr-2 font-semibold text-primary text-left transition-colors hover:bg-accent hover:rounded-xl pl-5 pr-3"
+          className="flex items-center gap-3 px-2 py-2 my-1 ml-1 mr-1 font-semibold text-primary text-left transition-colors hover:bg-accent hover:rounded-xl pr-3 text-sm"
         >
           <FileText className="w-5 h-5 text-primary" />
           Documentación
