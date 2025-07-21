@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CheckCircle, XCircle, Loader2, ExternalLink, AlertTriangle, Info } from "lucide-react";
+import { CheckCircle, XCircle, Loader2, ExternalLink, AlertTriangle, Info, Bot, Search, FileText } from "lucide-react";
 import SidebarMenu from "@/components/SidebarMenu";
 import Topbar from "@/components/Topbar";
 
@@ -45,10 +45,10 @@ interface LogEntry {
 }
 
 export default function AuditPage() {
-  // Estado para el modo de entrada: 'url' o 'text'
+  const [auditStarted, setAuditStarted] = useState(false);
   const [inputMode, setInputMode] = useState<'url' | 'text'>('url');
-  const [url, setUrl] = useState('');
-  const [manualText, setManualText] = useState('');
+  const [url, setUrl] = useState("");
+  const [manualText, setManualText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<AuditResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +69,15 @@ export default function AuditPage() {
     setLogs([]);
   };
 
+  const resetAudit = () => {
+    setAuditStarted(false);
+    setResult(null);
+    setError(null);
+    setUrl("");
+    setManualText("");
+    clearLogs();
+  };
+  
   const handleAudit = async () => {
     if (inputMode === 'url' && !url.trim()) {
       setError("Por favor ingresa una URL válida");
@@ -170,242 +179,329 @@ export default function AuditPage() {
             <Card className="bg-transparent shadow-none border-none">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  Auditoría de contenido en IA
+                  🧩 Auditoría de Visibilidad en IA
                 </CardTitle>
                 <CardDescription>
                   Simula la visibilidad de una página en búsquedas por IA usando chunking estructurado y modelos de IA
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {/* Reemplazar el selector de modo de entrada por un diseño pill/tab */}
-                  <div className="flex items-center mb-4">
-                    <div className="flex bg-[#f5f5fa] rounded-full border border-gray-200 p-1 shadow-sm">
-                      <button
-                        type="button"
-                        className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-primary/30 ${inputMode === 'url' ? 'bg-white text-black shadow' : 'bg-transparent text-gray-500 hover:text-black'}`}
-                        onClick={() => setInputMode('url')}
+                {!auditStarted ? (
+                  <div className="space-y-6">
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Herramienta propia */}
+                      <Card
+                        onClick={() => setAuditStarted(true)}
+                        className="cursor-pointer hover:shadow-lg transition-shadow flex flex-col items-center justify-center p-6 text-center"
                       >
-                        Auditar por URL
-                      </button>
-                      <button
-                        type="button"
-                        className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-primary/30 ${inputMode === 'text' ? 'bg-white text-black shadow' : 'bg-transparent text-gray-500 hover:text-black'}`}
-                        onClick={() => setInputMode('text')}
-                      >
-                        Auditar pegando texto
-                      </button>
+                        <Bot className="w-10 h-10 mb-2 text-primary" />
+                        <h3 className="font-bold">Auditoría de IA (Esta App)</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Pega una URL o HTML para simular la visibilidad en búsquedas por IA.
+                        </p>
+                      </Card>
+                      {/* Fannalyzer */}
+                      <a href="https://chromewebstore.google.com/detail/fannalyzer-fan-out-intell/ebmpnkcfcilfdhhklebcclfbfodlbjfh" target="_blank" rel="noopener noreferrer" className="text-primary">
+                        <Card className="hover:shadow-lg transition-shadow flex flex-col items-center justify-center p-6 text-center h-full">
+                          <Search className="w-10 h-10 mb-2 text-orange-500" />
+                          <h3 className="font-bold">Fannalyzer</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Extensión de Chrome para analizar el fan-out semántico de cualquier página.
+                          </p>
+                        </Card>
+                      </a>
+                      {/* The AI Search Content Optimizer */}
+                      <a href="https://chatgpt.com/g/g-68592a1f6e988191b0c7f802ac3308eb-the-ai-search-content-optimizer" target="_blank" rel="noopener noreferrer" className="text-primary">
+                        <Card className="hover:shadow-lg transition-shadow flex flex-col items-center justify-center p-6 text-center h-full">
+                          <FileText className="w-10 h-10 mb-2 text-green-500" />
+                          <h3 className="font-bold">AI Search Content Optimizer</h3>
+                          <p className="text-sm text-muted-foreground">
+                            GPT de Aleyda Solis para optimizar tu contenido para búsquedas en IA.
+                          </p>
+                        </Card>
+                      </a>
                     </div>
                   </div>
-
-                  {/* Input de URL solo si inputMode === 'url' */}
-                  {inputMode === 'url' && (
-                    <Input
-                      type="url"
-                      placeholder="https://genially.com"
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      className="mb-4"
-                    />
-                  )}
-
-                  {/* Textarea solo si inputMode === 'text' */}
-                  {inputMode === 'text' && (
-                    <div className="mb-4">
-                      <textarea
-                        placeholder="Pega aquí el HTML completo de la página o documento (se mantendrán los headings, listas, etc.)"
-                        value={manualText}
-                        onChange={e => setManualText(e.target.value)}
-                        className="w-full min-h-[120px] border rounded p-2 mb-2"
-                      />
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-500">Pega el HTML completo del documento de Google. <a className="color:blue" href="https://www.docstomarkdown.pro/convert-google-docs-to-html/">Consigue el HTML con esta herramienta</a>. Si pegas HTML, se mantendrá la estructura (headings, listas, etc.).</span>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Formulario de auditoría */}
+                    <div className="flex items-center mb-4">
+                      <div className="flex bg-[#f5f5fa] rounded-full border border-gray-200 p-1 shadow-sm">
                         <button
                           type="button"
-                          className="text-xs text-primary underline ml-2"
-                          onClick={() => setManualText('')}
+                          className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-primary/30 ${inputMode === 'url' ? 'bg-white text-black shadow' : 'bg-transparent text-gray-500 hover:text-black'}`}
+                          onClick={() => setInputMode('url')}
                         >
-                          Limpiar
+                          Auditar por URL
+                        </button>
+                        <button
+                          type="button"
+                          className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-primary/30 ${inputMode === 'text' ? 'bg-white text-black shadow' : 'bg-transparent text-gray-500 hover:text-black'}`}
+                          onClick={() => setInputMode('text')}
+                        >
+                          Auditar pegando texto
                         </button>
                       </div>
                     </div>
-                  )}
 
-                  <div className="flex gap-2">
-                    <Button 
-                      onClick={handleAudit} 
-                      disabled={isLoading || (!url.trim() && !manualText.trim())}
-                      className="min-w-[120px]"
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Auditando...
-                        </>
-                      ) : (
-                        "Auditar"
-                      )}
-                    </Button>
-                  </div>
-
-                  {/* Logs en tiempo real */}
-                  {logs.length > 0 && (
-                    <Card>
-                      <CardHeader>
+                    {inputMode === 'url' && (
+                      <Input
+                        type="url"
+                        placeholder="https://ejemplo.com"
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        className="flex-1"
+                        disabled={isLoading}
+                      />
+                    )}
+                    
+                    {inputMode === 'text' && (
+                      <div className="mb-4">
+                        <textarea
+                          placeholder="Pega aquí el HTML completo de la página o documento (se mantendrán los headings, listas, etc.)"
+                          value={manualText}
+                          onChange={e => setManualText(e.target.value)}
+                          className="w-full min-h-[120px] border rounded p-2 mb-2"
+                        />
                         <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg">Procesando...</CardTitle>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={clearLogs}
-                            disabled={isLoading}
+                          <span className="text-xs text-gray-500">Puedes pegar el HTML completo de una página o documento. Si pegas HTML, se mantendrá la estructura (headings, listas, etc.). <a href="https://www.docstomarkdown.pro/convert-google-docs-to-html/">Herramienta</a></span>
+                          <button
+                            type="button"
+                            className="text-xs text-primary underline ml-2"
+                            onClick={() => setManualText('')}
                           >
                             Limpiar
-                          </Button>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2 max-h-60 overflow-y-auto">
-                          {logs.map((log) => (
-                            <div 
-                              key={log.id} 
-                              className={`flex items-start gap-3 p-3 rounded-lg border ${getLogColor(log.type)}`}
-                            >
-                              <div className="flex-shrink-0 mt-0.5">
-                                {getLogIcon(log.type)}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium">{log.message}</span>
-                                  <span className="text-xs text-gray-500">
-                                    {log.timestamp.toLocaleTimeString()}
-                                  </span>
-                                </div>
-                                {log.details && (
-                                  <div className="text-xs text-gray-600 mt-1 break-words">
-                                    {log.details}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {error && (
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                      <div className="flex items-start gap-2">
-                        <XCircle className="w-5 h-5 text-red-500 mt-0.5" />
-                        <div>
-                          <p className="font-medium text-red-800">Error</p>
-                          <p className="text-red-700">{error}</p>
+                          </button>
                         </div>
                       </div>
+                    )}
+                    
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={handleAudit} 
+                        disabled={isLoading || (inputMode === 'url' && !url.trim()) || (inputMode === 'text' && !manualText.trim())}
+                        className="min-w-[120px]"
+                      >
+                        {isLoading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Auditando...
+                          </>
+                        ) : (
+                          "Auditar"
+                        )}
+                      </Button>
+                      {(isLoading || result || error) && (
+                        <Button variant="outline" onClick={resetAudit}>
+                          ← Volver a elegir
+                        </Button>
+                      )}
                     </div>
-                  )}
 
-                  {result && (
-                    <div className="space-y-6">
-                      {/* Resumen */}
+                    {/* Resultados */}
+                    {logs.length > 0 && (
                       <Card>
                         <CardHeader>
-                          <CardTitle className="text-lg">Resumen de Auditoría</CardTitle>
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-lg">Logs de Proceso</CardTitle>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={clearLogs}
+                              disabled={isLoading}
+                            >
+                              Limpiar
+                            </Button>
+                          </div>
                         </CardHeader>
                         <CardContent>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="text-center p-4 bg-blue-50 rounded-lg">
-                              <div className="text-2xl font-bold text-blue-700">{result.entity}</div>
-                              <div className="text-sm text-blue-600">Entidad Principal</div>
-                            </div>
-                            <div className="text-center p-4 bg-green-50 rounded-lg">
-                              <div className="text-2xl font-bold text-green-700">
-                                {result.totalCoverage.toFixed(1)}%
+                          <div className="space-y-2 max-h-60 overflow-y-auto">
+                            {logs.map((log) => (
+                              <div
+                                key={log.id}
+                                className={`flex items-start gap-3 p-3 rounded-lg border ${getLogColor(log.type)}`}
+                              >
+                                <div className="flex-shrink-0 mt-0.5">
+                                  {getLogIcon(log.type)}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium">{log.message}</span>
+                                    <span className="text-xs text-gray-500">
+                                      {log.timestamp.toLocaleTimeString()}
+                                    </span>
+                                  </div>
+                                  {log.details && (
+                                    <div className="text-xs text-gray-600 mt-1 break-words">
+                                      {log.details}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              <div className="text-sm text-green-600">Cobertura Total</div>
-                            </div>
-                            <div className="text-center p-4 bg-purple-50 rounded-lg">
-                              <div className="text-2xl font-bold text-purple-700">
-                                {result.queries.filter(q => q.covered).length}/{result.queries.length}
-                              </div>
-                              <div className="text-sm text-purple-600">Consultas Cubiertas</div>
-                            </div>
+                            ))}
                           </div>
                         </CardContent>
                       </Card>
+                    )}
+                    {error && (
+                      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <XCircle className="w-5 h-5 text-red-500 mt-0.5" />
+                          <div>
+                            <p className="font-medium text-red-800">Error</p>
+                            <p className="text-red-700">{error}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {result && (
+                      <div className="space-y-6">
+                        {/* Resumen */}
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-lg">Resumen de Auditoría</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                                <div className="text-2xl font-bold text-blue-700">{result.entity}</div>
+                                <div className="text-sm text-blue-600">Entidad Principal</div>
+                              </div>
+                              <div className="text-center p-4 bg-green-50 rounded-lg">
+                                <div className="text-2xl font-bold text-green-700">
+                                  {result.totalCoverage.toFixed(1)}%
+                                </div>
+                                <div className="text-sm text-green-600">Cobertura Total</div>
+                              </div>
+                              <div className="text-center p-4 bg-purple-50 rounded-lg">
+                                <div className="text-2xl font-bold text-purple-700">
+                                  {result.queries.filter(q => q.covered).length}/{result.queries.length}
+                                </div>
+                                <div className="text-sm text-purple-600">Consultas Cubiertas</div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
 
-                      {result?.queries && (
-                        <div className="mt-8">
-                          <h2 className="text-xl font-bold mb-2">Consultas y cobertura ({result.totalCoverage.toFixed(1)}%)</h2>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Consultas cubiertas */}
-                            <Card>
-                              <CardHeader>
-                                <CardTitle className="flex items-center gap-2"><CheckCircle className="text-green-500" /> Consultas cubiertas ({result.queries.filter(q => q.covered).length})</CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <ul className="list-disc pl-5">
-                                  {result.queries.filter(q => q.covered).map((q, idx) => (
-                                    <li key={idx} className="mb-2">
-                                      <span className="font-semibold">{q.query}</span>
-                                      <details className="mt-1 text-xs">
-                                        <summary className="cursor-pointer text-gray-500">Ver chunk relevante (similitud: {q.maxSimilarity.toFixed(2)})</summary>
-                                        <pre className="bg-gray-100 p-2 rounded whitespace-pre-wrap mt-1">{q.mostRelevantChunk}</pre>
-                                      </details>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </CardContent>
-                            </Card>
-                            {/* Consultas NO cubiertas */}
-                            <Card>
-                              <CardHeader>
-                                <CardTitle className="flex items-center gap-2"><XCircle className="text-red-500" /> Consultas NO cubiertas ({result.queries.filter(q => !q.covered).length})</CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                {result.queries.filter(q => !q.covered).length > 0 ? (
+                        {result?.queries && (
+                          <div className="mt-8">
+                            <h2 className="text-xl font-bold mb-2">Consultas y cobertura ({result.totalCoverage.toFixed(1)}%)</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* Consultas cubiertas */}
+                              <Card>
+                                <CardHeader>
+                                  <CardTitle className="flex items-center gap-2"><CheckCircle className="text-green-500" /> Consultas cubiertas ({result.queries.filter(q => q.covered).length})</CardTitle>
+                                </CardHeader>
+                                <CardContent>
                                   <ul className="list-disc pl-5">
-                                    {result.queries.filter(q => !q.covered).map((q, idx) => (
-                                      <li key={idx} className="mb-2 font-semibold text-red-700">{q.query}</li>
+                                    {result.queries.filter(q => q.covered).map((q, idx) => (
+                                      <li key={idx} className="mb-2">
+                                        <span className="font-semibold">{q.query}</span>
+                                        <details className="mt-1 text-xs">
+                                          <summary className="cursor-pointer text-gray-500">Ver chunk relevante (similitud: {q.maxSimilarity.toFixed(2)})</summary>
+                                          <pre className="bg-gray-100 p-2 rounded whitespace-pre-wrap mt-1">{q.mostRelevantChunk}</pre>
+                                        </details>
+                                      </li>
                                     ))}
                                   </ul>
-                                ) : (
-                                  <p className="text-gray-500">¡Todas las consultas están cubiertas!</p>
-                                )}
-                              </CardContent>
-                            </Card>
+                                </CardContent>
+                              </Card>
+                              {/* Consultas NO cubiertas */}
+                              <Card>
+                                <CardHeader>
+                                  <CardTitle className="flex items-center gap-2"><XCircle className="text-red-500" /> Consultas NO cubiertas ({result.queries.filter(q => !q.covered).length})</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                  {result.queries.filter(q => !q.covered).length > 0 ? (
+                                    <ul className="list-disc pl-5">
+                                      {result.queries.filter(q => !q.covered).map((q, idx) => (
+                                        <li key={idx} className="mb-2 font-semibold text-red-700">{q.query}</li>
+                                      ))}
+                                    </ul>
+                                  ) : (
+                                    <p className="text-gray-500">¡Todas las consultas están cubiertas!</p>
+                                  )}
+                                </CardContent>
+                              </Card>
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
 
-                      {result?.chunks?.headings && result.chunks.headings.length > 0 && (
-                        <div className="mt-8">
-                          <h2 className="text-xl font-bold mb-2">Estructura de headings</h2>
-                          <div className="bg-gray-50 p-4 rounded-lg border">
-                            {result.chunks.headings.map((heading: string, idx: number) => {
-                              const match = heading.match(/^(H[1-6]):\s*(.*)/);
-                              if (match) {
-                                const level = parseInt(match[1].replace('H', ''), 10);
-                                const text = match[2];
+                        {result?.chunks?.headings && result.chunks.headings.length > 0 && (
+                          <div className="mt-8">
+                            <h2 className="text-xl font-bold mb-2">Estructura de headings</h2>
+                            <div className="bg-gray-50 p-4 rounded-lg border">
+                              {result.chunks.headings.map((heading: string, idx: number) => {
+                                const match = heading.match(/^(H[1-6]):\s*(.*)/);
+                                if (match) {
+                                  const level = parseInt(match[1].replace('H', ''), 10);
+                                  const text = match[2];
+                                  return (
+                                    <div key={idx} className="font-mono text-sm" style={{ marginLeft: `${(level - 1) * 20}px` }}>
+                                      <span className="text-gray-400 font-bold">H{level}</span> <span className="ml-2 font-semibold">{text}</span>
+                                    </div>
+                                  );
+                                }
                                 return (
-                                  <div key={idx} className="font-mono text-sm" style={{ marginLeft: `${(level - 1) * 20}px` }}>
-                                    <span className="text-gray-400 font-bold">H{level}</span> <span className="ml-2 font-semibold">{text}</span>
+                                  <div key={idx} className="font-mono text-sm">
+                                    <span className="text-gray-400 font-bold">H?</span> <span className="ml-2 font-semibold">{heading}</span>
                                   </div>
                                 );
-                              }
-                              return (
-                                <div key={idx} className="font-mono text-sm">
-                                  <span className="text-gray-400 font-bold">H?</span> <span className="ml-2 font-semibold">{heading}</span>
-                                </div>
-                              );
-                            })}
+                              })}
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                        )}
+                        {/* Recomendaciones de herramientas */}
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-lg">Herramientas recomendadas</CardTitle>
+                            <CardDescription>
+                              Analiza y optimiza tu contenido con estas herramientas especializadas
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              {/* Herramienta propia */}
+                              <div className="flex flex-col items-center gap-2 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                <h3 className="font-bold text-blue-800">Auditoría de IA (esta app)</h3>
+                                <p className="text-xs text-blue-700 text-center">Simula la visibilidad de tu contenido en búsquedas por IA, detecta entidad principal y cobertura de consultas.</p>
+                                <Button variant="outline" className="mt-2 text-xs" disabled>Usando ahora</Button>
+                              </div>
+                              {/* Fannalyzer */}
+                              <div className="flex flex-col items-center gap-2 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                                <h3 className="font-bold text-orange-800">Fannalyzer</h3>
+                                <p className="text-xs text-orange-700 text-center">Extensión de Chrome para analizar el fan-out semántico de cualquier página y descubrir oportunidades SEO.</p>
+                                <a 
+                                  href="https://chromewebstore.google.com/detail/fannalyzer-fan-out-intell/ebmpnkcfcilfdhhklebcclfbfodlbjfh" 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="mt-2"
+                                >
+                                  <Button variant="outline" className="text-xs">Ir a Fannalyzer</Button>
+                                </a>
+                              </div>
+                              {/* The AI Search Content Optimizer */}
+                              <div className="flex flex-col items-center gap-2 p-4 bg-green-50 border border-green-200 rounded-lg">
+                                <h3 className="font-bold text-green-800">AI Search Content Optimizer</h3>
+                                <p className="text-xs text-green-700 text-center">GPT de Aleyda Solis para optimizar tu contenido para búsquedas en IA.</p>
+                                <a 
+                                  href="https://chatgpt.com/g/g-68592a1f6e988191b0c7f802ac3308eb-the-ai-search-content-optimizer" 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="mt-2"
+                                >
+                                  <Button variant="outline" className="text-xs">Ir al GPT</Button>
+                                </a>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
