@@ -25,3 +25,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Credenciales de Google Cloud
+google-credentials.json
+genially-geo-461306-fea4b4efb310.json
+.env.local

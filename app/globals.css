@@ -11,6 +11,28 @@ body {
   font-family: var(--font-sans);
 }
 
+h1,h2,h3,h4,p{
+padding-top: 8px;
+}
+
+h3 {
+  font-size: medium;
+  font-weight: bold;
+}
+
+ol, ul, menu {
+  list-style:circle;
+  margin-left: 24px;
+}
+
+hr{
+  margin: 16px;
+}
+
+p a{
+  color:blue
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

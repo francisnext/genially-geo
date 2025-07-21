@@ -324,6 +324,7 @@ export default function KeywordPage({ params }: KeywordPageProps) {
   const [openIa, setOpenIa] = useState<string | null>(null);
   const [hideHomes, setHideHomes] = useState(true);
   const [selectedIa, setSelectedIa] = useState<string | null>(null);
+  const [showOnlyGeniallyPrompts, setShowOnlyGeniallyPrompts] = useState(false);
 
   // Estado para ordenación de la tabla de marcas
   type BrandCol = 'brand' | 'count' | 'avgPos' | 'shareOfVoice';
@@ -491,84 +492,114 @@ export default function KeywordPage({ params }: KeywordPageProps) {
                     )}
                   </TabsContent>
                   <TabsContent value="prompts">
+                    <div className="mb-2 flex justify-end items-center gap-2">
+                      <label className="flex items-center gap-2 cursor-pointer select-none text-sm">
+                        <input
+                          type="checkbox"
+                          checked={showOnlyGeniallyPrompts}
+                          onChange={e => setShowOnlyGeniallyPrompts(e.target.checked)}
+                          className="accent-primary"
+                        />
+                        Mostrar prompts donde aparece Genially
+                      </label>
+                    </div>
                     <div className="space-y-2">
                       {prompts.length === 0 && (
                         <div className="text-muted-foreground px-4 py-2">No hay prompts para esta keyword.</div>
                       )}
-                      {prompts.map((p, i) => {
-                        // ¿Alguna respuesta de este prompt menciona a Genially?
-                        const mentionsGenially = p.iaStats && Object.values(p.iaStats).some((ia) => ia.items.some((item: SampleDatasetItem) => {
-                          if (!item.json_content) return false;
-                          let tools: any[] = [];
-                          try { tools = JSON.parse(item.json_content); } catch {}
-                          return tools.some((tool: any) => (tool.name || tool.nombre || "").toLowerCase().includes("genially"));
-                        }));
-                        // Total marcas y sources
-                        let totalBrands = 0;
-                        let totalSources = 0;
-                        Object.values(p.iaStats).forEach((ia) => {
-                          ia.items.forEach((item: SampleDatasetItem) => {
-                            if (!item.json_content) return;
+                      {prompts
+                        .filter(p => {
+                          if (!showOnlyGeniallyPrompts) return true;
+                          // ¿Alguna respuesta de este prompt menciona a Genially?
+                          return Object.values(p.iaStats).some((ia) => ia.items.some((item: SampleDatasetItem) => {
+                            if (!item.json_content) return false;
                             let tools: any[] = [];
                             try { tools = JSON.parse(item.json_content); } catch {}
-                            totalBrands += Array.isArray(tools) ? tools.length : 0;
-                            if (item.sources) {
-                              try {
-                                let src = item.sources;
-                                if (typeof src === "string" && src.trim().startsWith("[")) {
-                                  const arr = JSON.parse(src);
-                                  if (Array.isArray(arr)) totalSources += arr.length;
-                                } else {
-                                  totalSources += src.split(/,|;/).filter((s: string) => s.trim()).length;
+                            return tools.some((tool: any) => (tool.name || tool.nombre || "").toLowerCase().includes("genially"));
+                          }));
+                        })
+                        .map((p, i) => {
+                          // ¿Alguna respuesta de este prompt menciona a Genially?
+                          const mentionsGenially = p.iaStats && Object.values(p.iaStats).some((ia) => ia.items.some((item: SampleDatasetItem) => {
+                            if (!item.json_content) return false;
+                            let tools: any[] = [];
+                            try { tools = JSON.parse(item.json_content); } catch {}
+                            return tools.some((tool: any) => (tool.name || tool.nombre || "").toLowerCase().includes("genially"));
+                          }));
+                          // Total marcas y sources
+                          let totalBrands = 0;
+                          let totalSources = 0;
+                          Object.values(p.iaStats).forEach((ia) => {
+                            ia.items.forEach((item: SampleDatasetItem) => {
+                              if (!item.json_content) return;
+                              let tools: any[] = [];
+                              try { tools = JSON.parse(item.json_content); } catch {}
+                              totalBrands += Array.isArray(tools) ? tools.length : 0;
+                              if (item.sources) {
+                                try {
+                                  let src = item.sources;
+                                  if (typeof src === "string" && src.trim().startsWith("[")) {
+                                    const arr = JSON.parse(src);
+                                    if (Array.isArray(arr)) totalSources += arr.length;
+                                  } else {
+                                    totalSources += src.split(/,|;/).filter((s: string) => s.trim()).length;
+                                  }
+                                } catch {
+                                  totalSources += 1;
                                 }
-                              } catch {
-                                totalSources += 1;
                               }
-                            }
+                            });
                           });
-                        });
-                        return (
-                          <React.Fragment key={i}>
-                            <div
-                              className={`bg-white flex items-center gap-4 px-4 py-3 rounded-lg border hover:bg-muted/40 cursor-pointer transition-all ${openPrompt === p.prompt ? 'bg-muted/30' : ''}`}
-                              onClick={() => {
-                                setOpenPrompt(openPrompt === p.prompt ? null : p.prompt);
-                                setOpenIa(null);
-                              }}
-                            >
-                              <div className="flex-1 min-w-0">
-                                <div className="font-medium text-sm truncate">{p.prompt}</div>
+                          return (
+                            <React.Fragment key={i}>
+                              <div
+                                className={`bg-white flex items-center gap-4 px-4 py-3 rounded-lg border hover:bg-muted/40 cursor-pointer transition-all ${openPrompt === p.prompt ? 'bg-muted/30' : ''}`}
+                                onClick={() => {
+                                  setOpenPrompt(openPrompt === p.prompt ? null : p.prompt);
+                                  setOpenIa(null);
+                                }}
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium text-sm truncate">{p.prompt}</div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {mentionsGenially ? (
+                                    <span className="bg-green-100 text-green-700 rounded-full px-2 py-0.5 text-xs font-semibold flex items-center gap-1"><CheckCircle className="w-4 h-4" />Mentioned</span>
+                                  ) : null}
+                                  <span className="bg-blue-100 text-blue-700 rounded-full px-2 py-0.5 text-xs font-semibold">{totalBrands} Brands</span>
+                                  <span className="bg-orange-100 text-orange-700 rounded-full px-2 py-0.5 text-xs font-semibold">{totalSources} Sources</span>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                {mentionsGenially ? (
-                                  <span className="bg-green-100 text-green-700 rounded-full px-2 py-0.5 text-xs font-semibold flex items-center gap-1"><CheckCircle className="w-4 h-4" />Mentioned</span>
-                                ) : null}
-                                <span className="bg-blue-100 text-blue-700 rounded-full px-2 py-0.5 text-xs font-semibold">{totalBrands} Brands</span>
-                                <span className="bg-orange-100 text-orange-700 rounded-full px-2 py-0.5 text-xs font-semibold">{totalSources} Sources</span>
-                              </div>
-                            </div>
-                            {openPrompt === p.prompt && (
-                              <div className="bg-muted/40 rounded-lg p-4 mt-2 mb-2">
-                                {Object.entries((p.iaStats || {}) as Record<string, { marcas: number; sources: number; items: SampleDatasetItem[] }> ).map(
-                                  ([ia, stats]: [string, { marcas: number; sources: number; items: SampleDatasetItem[] }]) => (
-                                    <div key={ia} className="mb-4">
-                                      <div className="font-bold mb-1 flex items-center gap-2">
-                                        {getIaImage(ia) && <img src={getIaImage(ia)!} alt={ia} className="w-5 h-5 rounded-full" />}
-                                        {ia}
-                                      </div>
-                                      {stats.items.map((item: SampleDatasetItem, idx: number) => (
-                                        <div key={idx} className="mb-2 p-2 bg-white rounded shadow-sm border text-sm max-w-none prose prose-sm prose-p:mb-4 prose-a:underline prose-a:text-primary">
-                                          <ReactMarkdown>{item.content}</ReactMarkdown>
+                              {openPrompt === p.prompt && (
+                                <div className="bg-muted/40 rounded-lg p-4 mt-2 mb-2">
+                                  {Object.entries((p.iaStats || {}) as Record<string, { marcas: number; sources: number; items: SampleDatasetItem[] }> ).map(
+                                    ([ia, stats]: [string, { marcas: number; sources: number; items: SampleDatasetItem[] }]) => (
+                                      <div key={ia} className="mb-4">
+                                        <div
+                                          className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer select-none transition-all ${openIa === `${p.prompt}__${ia}` ? 'bg-muted/30 border-primary' : 'bg-white border hover:bg-muted/40'}`}
+                                          onClick={() => setOpenIa(openIa === `${p.prompt}__${ia}` ? null : `${p.prompt}__${ia}`)}
+                                        >
+                                          {getIaImage(ia) && <img src={getIaImage(ia)!} alt={ia} className="w-5 h-5 rounded-full" />}
+                                          <span className="font-bold">{ia}</span>
+                                          <span className="ml-2 text-xs text-gray-500">({stats.items.length} respuesta{stats.items.length !== 1 ? 's' : ''})</span>
                                         </div>
-                                      ))}
-                                    </div>
-                                  )
-                                )}
-                              </div>
-                            )}
-                          </React.Fragment>
-                        );
-                      })}
+                                        {openIa === `${p.prompt}__${ia}` && (
+                                          <div className="pl-4 mt-2">
+                                            {stats.items.map((item: SampleDatasetItem, idx: number) => (
+                                              <div key={idx} className="mb-2 p-2 bg-white rounded shadow-sm border text-sm max-w-none prose prose-sm prose-p:mb-4 prose-a:underline prose-a:text-primary">
+                                                <ReactMarkdown>{item.content}</ReactMarkdown>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
                     </div>
                   </TabsContent>
                   <TabsContent value="sources">
