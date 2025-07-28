@@ -5,102 +5,52 @@
       "prioridad": "alta"
     },
     {
-      "descripcion": "Muchas keywords posicionadas en top 20 tienen bajo CTR estimado, lo que indica títulos y metas poco atractivos o desalineados con la intención de búsqueda.",
+      "descripcion": "Falta de posicionamiento claro en la categoría SCORM-compliant o LTI (Learning Tools Interoperability), lo cual limita su visibilidad frente a plataformas como Articulate, iSpring o Captivate.",
       "prioridad": "alta"
     },
     {
-      "descripcion": "Varias URLs relevantes aparecen con posición >10, sin esfuerzos visibles de optimización para avanzar a top 3 (ej: plantillas, recursos, blog).",
+      "descripcion": "En el sitemap no se detectan páginas orientadas a keywords como 'SCORM', 'xAPI', 'LTI', 'interactive training' o 'authoring tools', lo que sugiere una débil orientación SEO técnica para búsquedas educativas especializadas.",
+      "prioridad": "media"
+    },
+    {
+      "descripcion": "Aunque hay comparativas con Nearpod, Kahoot y Articulate, estas están poco desarrolladas y no se detectan páginas con análisis SEO fuerte como 'genially vs captivate' o 'genially vs ispring'.",
+      "prioridad": "media"
+    },
+    {
+      "descripcion": "Genially se percibe más como una herramienta de presentaciones que como una plataforma formal de eLearning o LMS-integrated content authoring.",
       "prioridad": "alta"
-    },
-    {
-      "descripcion": "Falta de enfoque en términos clave como 'SCORM', 'LTI', 'authoring tool' o 'learning management system' en el contenido.",
-      "prioridad": "alta"
-    },
-    {
-      "descripcion": "Presencia de keywords con volumen alto sin URL dedicada u optimizada, como 'presentation examples', 'interactive resume', 'educational infographics'.",
-      "prioridad": "media"
-    },
-    {
-      "descripcion": "Exceso de contenido tipo plantilla con bajo posicionamiento y sin una agrupación semántica SEO clara.",
-      "prioridad": "media"
-    },
-    {
-      "descripcion": "Falta de páginas específicas orientadas a industrias verticales (educación, salud, finanzas) con contenido especializado.",
-      "prioridad": "media"
-    },
-    {
-      "descripcion": "Limitado uso de long-tails orientados a 'interactive training', 'corporate e-learning', 'gamification in learning'.",
-      "prioridad": "media"
-    },
-    {
-      "descripcion": "Falta de enlazado interno robusto entre los contenidos educativos (blog, templates, academy).",
-      "prioridad": "baja"
-    },
-    {
-      "descripcion": "URLs extensas y poco amigables para SEO en ciertas páginas de plantillas.",
-      "prioridad": "baja"
     }
   ],
   "estrategias_y_oportunidades": [
     {
-      "accion": "Optimizar títulos y meta descripciones para keywords top 10 con bajo CTR, alineándolos con la intención de búsqueda.",
+      "accion": "Optimizar contenido existente con términos como 'SCORM', 'xAPI', 'LTI integration', 'interactive training', 'gamification in learning' y crear nuevas páginas dirigidas a estas búsquedas.",
       "coste": "bajo",
       "prioridad": "alta"
     },
     {
-      "accion": "Optimizar contenido existente con términos como 'SCORM', 'LTI', 'interactive training', 'gamification in learning'.",
+      "accion": "Crear comparativas más completas tipo 'Genially vs Captivate', 'Genially vs iSpring' o 'Genially vs H5P' con tablas, casos de uso, funcionalidades y ventajas competitivas.",
+      "coste": "medio",
+      "prioridad": "alta"
+    },
+    {
+      "accion": "Generar contenido SEO enfocado en búsquedas como 'best authoring tools', 'create SCORM-compliant courses', 'interactive learning tools' y posicionar Genially dentro de esas listas.",
       "coste": "bajo",
       "prioridad": "alta"
     },
     {
-      "accion": "Reforzar el contenido SEO de las URLs en posición 11-20 para empujarlas al top 10 mediante mejoras on-page y enlazado interno.",
-      "coste": "bajo",
-      "prioridad": "alta"
-    },
-    {
-      "accion": "Registrar y posicionarse en directorios de software como G2, Capterra, TrustRadius, eLearningIndustry.",
+      "accion": "Solicitar inclusión activa de Genially en portales de software como G2, Capterra y TrustRadius con categorización adecuada (Authoring Tools, eLearning, SCORM, Gamification).",
       "coste": "medio",
       "prioridad": "alta"
     },
     {
-      "accion": "Crear landings orientadas a industrias clave (educación, salud, finanzas, corporativo) con contenido adaptado.",
-      "coste": "medio",
-      "prioridad": "alta"
-    },
-    {
-      "accion": "Crear o mejorar landings para keywords con volumen alto y sin página dedicada como 'interactive resume' o 'educational infographics'.",
-      "coste": "medio",
-      "prioridad": "alta"
-    },
-    {
-      "accion": "Agrupar las plantillas por intención de búsqueda ('templates for teachers', 'corporate presentations') y crear clústeres SEO.",
+      "accion": "Crear casos de uso específicos con palabras clave orientadas a 'corporate training', 'microlearning', 'employee onboarding', y ligarlo a plantillas o soluciones listas para usar.",
       "coste": "medio",
       "prioridad": "media"
     },
     {
-      "accion": "Aplicar estructura de silos en el sitio para conectar contenido entre blog, plantillas, academia y páginas de producto.",
-      "coste": "bajo",
-      "prioridad": "media"
-    },
-    {
-      "accion": "Desarrollar artículos orientados a búsquedas long-tail transaccionales ('best authoring tool for schools', etc.).",
-      "coste": "bajo",
-      "prioridad": "media"
-    },
-    {
-      "accion": "Reescribir URLs clave para que sean más limpias y orientadas a palabras clave.",
-      "coste": "bajo",
-      "prioridad": "baja"
-    },
-    {
-      "accion": "Usar datos del JSON para definir quick wins: keywords con volumen alto, buena posición y CTR mejorable.",
-      "coste": "bajo",
-      "prioridad": "alta"
-    },
-    {
-      "accion": "Internacionalizar las estrategias SEO para mercados clave como EE.UU., LATAM y Europa.",
+      "accion": "Desarrollar un micrositio técnico (tipo 'developers.genially.com') para explicar integraciones LTI, compatibilidad con LMS y aspectos técnicos para profesionales.",
       "coste": "alto",
-      "prioridad": "alta"
+      "prioridad": "media"
     }
   ]
 }
