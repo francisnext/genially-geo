@@ -131,7 +131,27 @@ function getKeywordStats(keyword: string) {
   items.forEach(item => {
     if (!item.json_content) return;
     let tools: any[] = [];
-    try { tools = JSON.parse(item.json_content); } catch {}
+    try { 
+      const parsed = JSON.parse(item.json_content);
+      // Manejar diferentes formatos de json_content
+      if (Array.isArray(parsed)) {
+        tools = parsed;
+      } else if (parsed.courses && Array.isArray(parsed.courses)) {
+        tools = parsed.courses;
+      } else if (parsed.tools && Array.isArray(parsed.tools)) {
+        tools = parsed.tools;
+      } else {
+        // Si no es un array conocido, no procesar
+        return;
+      }
+    } catch {
+      // Si falla el parsing, continuar con el siguiente item
+      return;
+    }
+    
+    // Verificar que tools sea un array antes de usar forEach
+    if (!Array.isArray(tools)) return;
+    
     tools.forEach(tool => {
       const name = tool.name || tool.nombre;
       const pos = tool.position || tool.posicion || 0;
@@ -266,15 +286,26 @@ export default function MarketShareAnalyzer() {
     // Verificar la estructura de los datos en tools
     let tools: any[] = [];
     try {
-      tools = data[0]?.json_content ? JSON.parse(data[0].json_content) : [];
+      if (data[0]?.json_content) {
+        const parsed = JSON.parse(data[0].json_content);
+        if (Array.isArray(parsed)) {
+          tools = parsed;
+        } else if (parsed.courses && Array.isArray(parsed.courses)) {
+          tools = parsed.courses;
+        } else if (parsed.tools && Array.isArray(parsed.tools)) {
+          tools = parsed.tools;
+        }
+      }
     } catch {}
-    tools.forEach((tool, index) => {
+    if (Array.isArray(tools)) {
+      tools.forEach((tool, index) => {
       console.log(`Tool ${index + 1}:`, {
         name: tool.name,
         nombre: tool.nombre,
         raw: tool
       })
     })
+    }
 
     const totalQueries = data.length
     const uniqueQueries = new Set(data.map((item) => (item.keyword || "").toLowerCase())).size
@@ -332,9 +363,19 @@ export default function MarketShareAnalyzer() {
       // Procesar tools
       let tools: any[] = [];
       try {
-        tools = item.json_content ? JSON.parse(item.json_content) : [];
+        if (item.json_content) {
+          const parsed = JSON.parse(item.json_content);
+          if (Array.isArray(parsed)) {
+            tools = parsed;
+          } else if (parsed.courses && Array.isArray(parsed.courses)) {
+            tools = parsed.courses;
+          } else if (parsed.tools && Array.isArray(parsed.tools)) {
+            tools = parsed.tools;
+          }
+        }
       } catch {}
-      tools.forEach((tool) => {
+      if (Array.isArray(tools)) {
+        tools.forEach((tool) => {
         const brand = tool.name || tool.nombre || ""
         if (!brand) {
           console.log("Tool sin nombre encontrada:", tool)
@@ -355,6 +396,7 @@ export default function MarketShareAnalyzer() {
 `)
         }
       })
+      }
       // Si Genially aparece en esta query, incrementar el contador
       if (hasGeniallyInQuery) {
         queriesWithGenially++
@@ -452,9 +494,19 @@ export default function MarketShareAnalyzer() {
     queriesWithBrands.forEach((item) => {
       let tools: any[] = [];
       try {
-        tools = item.json_content ? JSON.parse(item.json_content) : [];
+        if (item.json_content) {
+          const parsed = JSON.parse(item.json_content);
+          if (Array.isArray(parsed)) {
+            tools = parsed;
+          } else if (parsed.courses && Array.isArray(parsed.courses)) {
+            tools = parsed.courses;
+          } else if (parsed.tools && Array.isArray(parsed.tools)) {
+            tools = parsed.tools;
+          }
+        }
       } catch {}
-      tools.forEach((tool: any) => {
+      if (Array.isArray(tools)) {
+        tools.forEach((tool: any) => {
         const brandName = tool.name || tool.nombre || ""
         if (brandName) {
           if (!brandCounts[brandName]) {
@@ -465,6 +517,7 @@ export default function MarketShareAnalyzer() {
           totalBrandMentions++
         }
       })
+      }
     })
 
     // Crear distribución de marcas
@@ -549,14 +602,25 @@ export default function MarketShareAnalyzer() {
       // Procesar tools en lugar de marcasMencionadas
       let tools: any[] = [];
       try {
-        tools = item.json_content ? JSON.parse(item.json_content) : [];
+        if (item.json_content) {
+          const parsed = JSON.parse(item.json_content);
+          if (Array.isArray(parsed)) {
+            tools = parsed;
+          } else if (parsed.courses && Array.isArray(parsed.courses)) {
+            tools = parsed.courses;
+          } else if (parsed.tools && Array.isArray(parsed.tools)) {
+            tools = parsed.tools;
+          }
+        }
       } catch {}
-      tools.forEach((tool) => {
+      if (Array.isArray(tools)) {
+        tools.forEach((tool) => {
           const brand = tool.name || tool.nombre || "";
           if (brand && topBrands.includes(brand)) {
             weekBrandCount[weekKey][brand] = (weekBrandCount[weekKey][brand] || 0) + 1;
           }
         });
+      }
     });
 
     // Convertir a array de objetos para Recharts, ordenado por semana

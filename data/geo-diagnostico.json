@@ -1,55 +1,60 @@
 {
   "debilidades": [
     {
-      "descripcion": "No aparece en directorios clave como G2, Capterra, TrustRadius o eLearningIndustry en categorías como e-learning o authoring tools.",
+      "descripcion": "Genially aparece en comparativas junto a herramientas como Articulate 360, Adobe Captivate, H5P o iSpring Suite, pero casi siempre se le percibe como menos robusta para la creación de cursos SCORM o con funcionalidades LTI, lo que la aleja del mercado corporativo y LMS enterprise.",
       "prioridad": "alta"
     },
     {
-      "descripcion": "Falta de posicionamiento claro en la categoría SCORM-compliant o LTI (Learning Tools Interoperability), lo cual limita su visibilidad frente a plataformas como Articulate, iSpring o Captivate.",
+      "descripcion": "Los competidores directos (Canva, Nearpod, Kahoot!, Quizizz, Padlet) están muy bien posicionados en búsquedas de 'gamification', 'interactive learning apps' y 'no-code tools for education', mientras que Genially apenas aparece en los listados en puestos secundarios.",
       "prioridad": "alta"
     },
     {
-      "descripcion": "En el sitemap no se detectan páginas orientadas a keywords como 'SCORM', 'xAPI', 'LTI', 'interactive training' o 'authoring tools', lo que sugiere una débil orientación SEO técnica para búsquedas educativas especializadas.",
+      "descripcion": "No capitaliza suficiente en búsquedas de alto valor B2B como 'interactive training materials', 'authoring tool for eLearning', 'SCORM compliant courses' donde dominan Articulate, Adobe, iSpring y Elucidat.",
+      "prioridad": "alta"
+    },
+    {
+      "descripcion": "Aunque es reconocida en entornos educativos, Genially no logra diferenciar su propuesta en keywords de negocio como 'employee training', 'corporate learning tools' o 'LMS integrations'.",
       "prioridad": "media"
     },
     {
-      "descripcion": "Aunque hay comparativas con Nearpod, Kahoot y Articulate, estas están poco desarrolladas y no se detectan páginas con análisis SEO fuerte como 'genially vs captivate' o 'genially vs ispring'.",
+      "descripcion": "Exceso de presencia en categorías genéricas como 'visual communication tools' (donde compite con Canva, Prezi, Piktochart) lo que diluye su posicionamiento como solución e-learning avanzada.",
       "prioridad": "media"
-    },
-    {
-      "descripcion": "Genially se percibe más como una herramienta de presentaciones que como una plataforma formal de eLearning o LMS-integrated content authoring.",
-      "prioridad": "alta"
     }
   ],
   "estrategias_y_oportunidades": [
     {
-      "accion": "Optimizar contenido existente con términos como 'SCORM', 'xAPI', 'LTI integration', 'interactive training', 'gamification in learning' y crear nuevas páginas dirigidas a estas búsquedas.",
+      "accion": "Optimizar y crear contenido SEO en torno a keywords técnicas de e-learning: 'SCORM courses', 'xAPI authoring', 'LTI integration', 'interactive corporate training'.",
       "coste": "bajo",
       "prioridad": "alta"
     },
     {
-      "accion": "Crear comparativas más completas tipo 'Genially vs Captivate', 'Genially vs iSpring' o 'Genially vs H5P' con tablas, casos de uso, funcionalidades y ventajas competitivas.",
+      "accion": "Aprovechar la categoría 'no-code tools for education' y reforzar el mensaje de accesibilidad y facilidad de uso frente a herramientas complejas como Captivate o Storyline.",
       "coste": "medio",
       "prioridad": "alta"
     },
     {
-      "accion": "Generar contenido SEO enfocado en búsquedas como 'best authoring tools', 'create SCORM-compliant courses', 'interactive learning tools' y posicionar Genially dentro de esas listas.",
+      "accion": "Publicar comparativas específicas contra competidores clave (Canva, H5P, Nearpod, Kahoot, iSpring, Articulate) con landings de tipo 'Genially vs X'.",
+      "coste": "medio",
+      "prioridad": "alta"
+    },
+    {
+      "accion": "Fortalecer contenido de blog y recursos en torno a 'interactive learning apps', 'gamification in education', 'remote teaching tools', donde Genially ya aparece pero no lidera.",
       "coste": "bajo",
-      "prioridad": "alta"
-    },
-    {
-      "accion": "Solicitar inclusión activa de Genially en portales de software como G2, Capterra y TrustRadius con categorización adecuada (Authoring Tools, eLearning, SCORM, Gamification).",
-      "coste": "medio",
-      "prioridad": "alta"
-    },
-    {
-      "accion": "Crear casos de uso específicos con palabras clave orientadas a 'corporate training', 'microlearning', 'employee onboarding', y ligarlo a plantillas o soluciones listas para usar.",
-      "coste": "medio",
       "prioridad": "media"
     },
     {
-      "accion": "Desarrollar un microsite técnico (tipo 'developers.genially.com') para explicar integraciones LTI, compatibilidad con LMS y aspectos técnicos para profesionales.",
-      "coste": "alto",
+      "accion": "Generar estudios de caso y páginas de aterrizaje específicas para 'corporate training' y 'employee engagement', con SEO orientado al sector B2B.",
+      "coste": "medio",
+      "prioridad": "alta"
+    },
+    {
+      "accion": "Trabajar presencia en directorios de software clave (G2, Capterra, TrustRadius, eLearningIndustry) con descripciones optimizadas para keywords de authoring tool y e-learning.",
+      "coste": "bajo",
+      "prioridad": "alta"
+    },
+    {
+      "accion": "Explorar contenido de long-tail para capturar tráfico educativo: 'digital storytelling tools for teachers', 'interactive whiteboards alternatives', 'visual communication in learning'.",
+      "coste": "bajo",
       "prioridad": "media"
     }
   ]

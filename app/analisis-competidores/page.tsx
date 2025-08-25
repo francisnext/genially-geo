@@ -22,8 +22,10 @@ export default function AnalisisCompetidoresPage() {
     let toolsArr: any[] = [];
     filtered.forEach((d) => {
       try {
-        const arr = JSON.parse(d.json_content);
-        if (Array.isArray(arr)) toolsArr = toolsArr.concat(arr);
+        if (typeof d.json_content === "string") {
+          const arr = JSON.parse(d.json_content);
+          if (Array.isArray(arr)) toolsArr = toolsArr.concat(arr);
+        }
       } catch {}
     });
     // Eliminar duplicados por nombre (mantener la mejor posición encontrada)
@@ -44,8 +46,15 @@ export default function AnalisisCompetidoresPage() {
     const set = new Set<string>();
     sampleDataset.forEach((d) => {
       try {
-        const arr = JSON.parse(d.json_content);
-        if (Array.isArray(arr)) arr.forEach((tool: any) => set.add(tool.name));
+        if (typeof d.json_content === "string") {
+          const arr = JSON.parse(d.json_content);
+          if (Array.isArray(arr)) arr.forEach((tool: any) => {
+            let name = tool?.name ?? tool?.nombre;
+            if (typeof name !== "string" || !name) return;
+            if (name.toLowerCase().includes("genially")) name = "Genially";
+            set.add(name);
+          });
+        }
       } catch {}
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b));
@@ -67,7 +76,12 @@ export default function AnalisisCompetidoresPage() {
 
   // Sugerencias de marcas no seleccionadas
   const brandSuggestions = useMemo(() =>
-    allBrands.filter(b => !selectedBrands.includes(b) && b.toLowerCase().includes(inputValue.toLowerCase())),
+    allBrands.filter(b => {
+      if (typeof b !== "string") return false;
+      if (selectedBrands.includes(b)) return false;
+      const query = (inputValue || "").toLowerCase();
+      return (b || "").toLowerCase().includes(query);
+    }),
     [allBrands, selectedBrands, inputValue]
   );
 
@@ -134,9 +148,14 @@ export default function AnalisisCompetidoresPage() {
       if (!iaList.includes(item.ia)) return;
       iaTotals[item.ia] = (iaTotals[item.ia] || 0) + 1;
       if (!item.json_content) return;
-      let tools: any[] = [];
-      try { tools = JSON.parse(item.json_content); } catch {}
-      tools.forEach(tool => {
+      let toolsList: any[] = [];
+      try {
+        if (typeof item.json_content === "string") {
+          const parsed = JSON.parse(item.json_content);
+          if (Array.isArray(parsed)) toolsList = parsed;
+        }
+      } catch {}
+      toolsList.forEach(tool => {
         let name = tool.name || tool.nombre;
         if (!name) return;
         if (name.toLowerCase().includes('genially')) name = 'Genially';
