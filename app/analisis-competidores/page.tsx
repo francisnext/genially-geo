@@ -191,7 +191,7 @@ export default function AnalisisCompetidoresPage() {
           <div className="w-full max-w-8xl mx-auto space-y-6">
             <Card className="md:col-span-2 bg-transparent shadow-none border-none">
               <CardHeader>
-                <CardTitle>Análisis de competidores</CardTitle>
+                <CardTitle>Análisis de competidores (WIP)</CardTitle>
                 <CardDescription>Explora el análisis comparativo de Genially frente a sus principales competidores en el sector EdTech.</CardDescription>
               </CardHeader>
               <CardContent>
