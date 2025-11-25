@@ -1,16 +1,68 @@
 "use client"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import geoDiagnostico from "@/data/geo-diagnostico.json";
-import React from "react";
-import SidebarMenu from "@/components/SidebarMenu";
-import Topbar from "@/components/Topbar";
+
+import React, { useState, useEffect, useMemo } from "react"
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
+import SidebarMenu from "@/components/SidebarMenu"
+import Topbar from "@/components/Topbar"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { fetchDebilidadesOportunidades, DebilidadesOportunidadesItem } from "@/lib/firestore-debilidades"
 
 export default function DebilidadesOportunidadesPage() {
+  // State
+  const [data, setData] = useState<DebilidadesOportunidadesItem | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Load from Firestore
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const items = await fetchDebilidadesOportunidades()
+        // Assuming the collection contains a single document with the needed structure
+        setData(items[0] ?? {})
+      } catch (e) {
+        console.error(e)
+        setError(e instanceof Error ? e.message : "Error loading data")
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  // Derived lists (fallback to empty arrays)
+  const debilidades = useMemo(() => data?.debilidades ?? [], [data])
+  const oportunidades = useMemo(() => data?.estrategias_y_oportunidades ?? [], [data])
+
+  // ---------- Render ----------
+  if (loading) {
+    return (
+      <>
+        <Topbar />
+        <div className="bg-[#F9F8FC] min-h-screen flex items-center justify-center">
+          <p className="text-muted-foreground">Cargando datos...</p>
+        </div>
+      </>
+    )
+  }
+
+  if (error) {
+    return (
+      <>
+        <Topbar />
+        <div className="bg-[#F9F8FC] min-h-screen flex items-center justify-center p-4">
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </div>
+      </>
+    )
+  }
+
   return (
     <>
       <Topbar />
       <div className="bg-[#F9F8FC] min-h-screen bg-gradient-to-br from-[var(--background)] to-[var(--primary)] flex">
-        {/* Menú lateral */}
         <SidebarMenu />
         <main className="flex-1 p-4 flex items-center justify-center">
           <div className="w-full max-w-8xl mx-auto space-y-6">
@@ -31,25 +83,22 @@ export default function DebilidadesOportunidadesPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {geoDiagnostico.debilidades
+                        {debilidades
                           .slice()
                           .sort((a, b) => {
-                            const prioridadOrden: { [key in 'alta' | 'media' | 'baja']: number } = { alta: 0, media: 1, baja: 2 };
-                            return prioridadOrden[(a.prioridad as 'alta' | 'media' | 'baja')] - prioridadOrden[(b.prioridad as 'alta' | 'media' | 'baja')];
+                            const order: { [key in 'alta' | 'media' | 'baja']: number } = { alta: 0, media: 1, baja: 2 }
+                            return order[a.prioridad] - order[b.prioridad]
                           })
-                          .map((deb, idx) => {
-                            const debilidad = deb as { descripcion: string; prioridad: 'alta' | 'media' | 'baja' };
-                            return (
-                              <tr key={idx} className="border-b border-border last:border-b-0">
-                                <td className="p-2">{debilidad.descripcion}</td>
-                                <td className="p-2 capitalize font-semibold">
-                                  {debilidad.prioridad === 'alta' && <span className="text-green-700 bg-green-100 rounded px-2 py-1 mr-1">Alta</span>}
-                                  {debilidad.prioridad === 'media' && <span className="text-yellow-700 bg-yellow-100 rounded px-2 py-1 mr-1">Media</span>}
-                                  {debilidad.prioridad === 'baja' && <span className="text-gray-700 bg-gray-100 rounded px-2 py-1 mr-1">Baja</span>}
-                                </td>
-                              </tr>
-                            );
-                          })}
+                          .map((deb, idx) => (
+                            <tr key={idx} className="border-b border-border last:border-b-0">
+                              <td className="p-2">{deb.descripcion}</td>
+                              <td className="p-2 capitalize font-semibold">
+                                {deb.prioridad === 'alta' && <span className="text-green-700 bg-green-100 rounded px-2 py-1 mr-1">Alta</span>}
+                                {deb.prioridad === 'media' && <span className="text-yellow-700 bg-yellow-100 rounded px-2 py-1 mr-1">Media</span>}
+                                {deb.prioridad === 'baja' && <span className="text-gray-700 bg-gray-100 rounded px-2 py-1 mr-1">Baja</span>}
+                              </td>
+                            </tr>
+                          ))}
                       </tbody>
                     </table>
                   </div>
@@ -66,26 +115,23 @@ export default function DebilidadesOportunidadesPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {geoDiagnostico.estrategias_y_oportunidades
+                        {oportunidades
                           .slice()
                           .sort((a, b) => {
-                            const prioridadOrden: { [key in 'alta' | 'media' | 'baja']: number } = { alta: 0, media: 1, baja: 2 };
-                            return prioridadOrden[(a.prioridad as 'alta' | 'media' | 'baja')] - prioridadOrden[(b.prioridad as 'alta' | 'media' | 'baja')];
+                            const order: { [key in 'alta' | 'media' | 'baja']: number } = { alta: 0, media: 1, baja: 2 }
+                            return order[a.prioridad] - order[b.prioridad]
                           })
-                          .map((op, idx) => {
-                            const estrategia = op as { accion: string; coste: string; prioridad: 'alta' | 'media' | 'baja' };
-                            return (
-                              <tr key={idx} className="border-b border-border last:border-b-0">
-                                <td className="p-2">{estrategia.accion}</td>
-                                <td className="p-2 capitalize">{estrategia.coste}</td>
-                                <td className="p-2 capitalize font-semibold">
-                                  {estrategia.prioridad === 'alta' && <span className="text-green-700 bg-green-100 rounded px-2 py-1 mr-1">Alta</span>}
-                                  {estrategia.prioridad === 'media' && <span className="text-yellow-700 bg-yellow-100 rounded px-2 py-1 mr-1">Media</span>}
-                                  {estrategia.prioridad === 'baja' && <span className="text-gray-700 bg-gray-100 rounded px-2 py-1 mr-1">Baja</span>}
-                                </td>
-                              </tr>
-                            );
-                          })}
+                          .map((op, idx) => (
+                            <tr key={idx} className="border-b border-border last:border-b-0">
+                              <td className="p-2">{op.accion}</td>
+                              <td className="p-2 capitalize">{op.coste}</td>
+                              <td className="p-2 capitalize font-semibold">
+                                {op.prioridad === 'alta' && <span className="text-green-700 bg-green-100 rounded px-2 py-1 mr-1">Alta</span>}
+                                {op.prioridad === 'media' && <span className="text-yellow-700 bg-yellow-100 rounded px-2 py-1 mr-1">Media</span>}
+                                {op.prioridad === 'baja' && <span className="text-gray-700 bg-gray-100 rounded px-2 py-1 mr-1">Baja</span>}
+                              </td>
+                            </tr>
+                          ))}
                       </tbody>
                     </table>
                   </div>
@@ -96,5 +142,5 @@ export default function DebilidadesOportunidadesPage() {
         </main>
       </div>
     </>
-  );
-} 
+  )
+}

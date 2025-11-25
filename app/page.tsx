@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-import { SAMPLE_DATASET, getUniqueKeywords, SampleDatasetItem } from "@/data/sample-dataset"
+import { getSampleDataset, getUniqueKeywords, SampleDatasetItem } from "@/data/sample-dataset"
 import geoDiagnostico from "@/data/geo-diagnostico.json"
 import SidebarMenu from "@/components/SidebarMenu"
 import Link from "next/link"
@@ -122,16 +122,16 @@ function getBrandDomain(brand: string): string | null {
 }
 
 // Calcular métricas por keyword
-function getKeywordStats(keyword: string) {
-  const items = SAMPLE_DATASET.filter(item => (item.keyword || '').toLowerCase() === keyword.toLowerCase());
+function getKeywordStats(keyword: string, datasetItems: SampleDatasetItem[]) {
+  const items = datasetItems.filter((item: SampleDatasetItem) => (item.keyword || '').toLowerCase() === keyword.toLowerCase());
   let geniallyPositions: number[] = [];
   let geniallyMentions = 0;
   let totalMentions = 0;
   const brandCount: Record<string, { count: number; avgPos: number }> = {};
-  items.forEach(item => {
+  items.forEach((item: SampleDatasetItem) => {
     if (!item.json_content) return;
     let tools: any[] = [];
-    try { 
+    try {
       const parsed = JSON.parse(item.json_content);
       // Manejar diferentes formatos de json_content
       if (Array.isArray(parsed)) {
@@ -148,10 +148,10 @@ function getKeywordStats(keyword: string) {
       // Si falla el parsing, continuar con el siguiente item
       return;
     }
-    
+
     // Verificar que tools sea un array antes de usar forEach
     if (!Array.isArray(tools)) return;
-    
+
     tools.forEach(tool => {
       const name = tool.name || tool.nombre;
       const pos = tool.position || tool.posicion || 0;
@@ -245,7 +245,30 @@ export default function MarketShareAnalyzer() {
   const [results, setResults] = useState<MarketShareResult | null>(null)
   const [selectedDetailBrand, setSelectedDetailBrand] = useState<string>("all")
 
+  // Estado para los datos del dataset
+  const [dataset, setDataset] = useState<SampleDatasetItem[]>([]);
+  const [datasetLoading, setDatasetLoading] = useState(true);
+  const [datasetError, setDatasetError] = useState<string | null>(null);
+
   const router = useRouter();
+
+  // Cargar datos de Firestore al montar el componente
+  useEffect(() => {
+    const loadData = async () => {
+      setDatasetLoading(true);
+      setDatasetError(null);
+      try {
+        const data = await getSampleDataset();
+        setDataset(data);
+      } catch (error) {
+        console.error('Error loading dataset:', error);
+        setDatasetError(error instanceof Error ? error.message : 'Error desconocido al cargar datos');
+      } finally {
+        setDatasetLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   // Al autenticar, carga automáticamente el SAMPLE_DATASET
   // const handleLogin = () => {
@@ -272,7 +295,7 @@ export default function MarketShareAnalyzer() {
   //   }
   // }
 
-  // Solo usa SAMPLE_DATASET, elimina la opción de analizar JSON manualmente
+  // Solo usa dataset, elimina la opción de analizar JSON manualmente
   const analyzeData = () => {
     if (!apiKey) {
       setError("Por favor, ingresa una API key")
@@ -280,7 +303,7 @@ export default function MarketShareAnalyzer() {
     }
 
     setLoading(true)
-    const data = SAMPLE_DATASET
+    const data = dataset
     console.log("Datos cargados:", data)
 
     // Verificar la estructura de los datos en tools
@@ -296,23 +319,23 @@ export default function MarketShareAnalyzer() {
           tools = parsed.tools;
         }
       }
-    } catch {}
+    } catch { }
     if (Array.isArray(tools)) {
       tools.forEach((tool, index) => {
-      console.log(`Tool ${index + 1}:`, {
-        name: tool.name,
-        nombre: tool.nombre,
-        raw: tool
+        console.log(`Tool ${index + 1}:`, {
+          name: tool.name,
+          nombre: tool.nombre,
+          raw: tool
+        })
       })
-    })
     }
 
     const totalQueries = data.length
-    const uniqueQueries = new Set(data.map((item) => (item.keyword || "").toLowerCase())).size
+    const uniqueQueries = new Set(data.map((item: SampleDatasetItem) => (item.keyword || "").toLowerCase())).size
 
     // Calcular frecuencias de queries
     const queryCounts: { [key: string]: { count: number; withBrands: number; withGenially: number } } = {}
-    data.forEach((item) => {
+    data.forEach((item: SampleDatasetItem) => {
       const query = (item.keyword || "").toLowerCase()
       if (!queryCounts[query]) {
         queryCounts[query] = { count: 0, withBrands: 0, withGenially: 0 }
@@ -322,7 +345,7 @@ export default function MarketShareAnalyzer() {
       let tools: any[] = [];
       try {
         tools = item.json_content ? JSON.parse(item.json_content) : [];
-      } catch {}
+      } catch { }
       if (tools.length > 0) {
         queryCounts[query].withBrands++
       }
@@ -357,7 +380,7 @@ export default function MarketShareAnalyzer() {
     let queriesWithGenially = 0
     const brandCounts: { [key: string]: { count: number; totalSentiment: number } } = {}
 
-    data.forEach((item, index) => {
+    data.forEach((item: SampleDatasetItem, index: number) => {
       let hasGeniallyInQuery = false
       console.log(`\nProcesando query ${index + 1}:`, item.keyword)
       // Procesar tools
@@ -373,29 +396,29 @@ export default function MarketShareAnalyzer() {
             tools = parsed.tools;
           }
         }
-      } catch {}
+      } catch { }
       if (Array.isArray(tools)) {
         tools.forEach((tool) => {
-        const brand = tool.name || tool.nombre || ""
-        if (!brand) {
-          console.log("Tool sin nombre encontrada:", tool)
-          return
-        }
-        totalBrandMentions++
-        console.log(`Marca encontrada: "${brand}"`)
-        // Actualizar conteo de marcas
-        if (!brandCounts[brand]) {
-          brandCounts[brand] = { count: 0, totalSentiment: 0 }
-        }
-        brandCounts[brand].count++
-        brandCounts[brand].totalSentiment += tool.sentiment || tool.sentimiento || 0
-        if (isGenially(brand)) {
-          geniallyMentions++
-          hasGeniallyInQuery = true
-          console.log(`¡Genially encontrado en la query ${index + 1}!
+          const brand = tool.name || tool.nombre || ""
+          if (!brand) {
+            console.log("Tool sin nombre encontrada:", tool)
+            return
+          }
+          totalBrandMentions++
+          console.log(`Marca encontrada: "${brand}"`)
+          // Actualizar conteo de marcas
+          if (!brandCounts[brand]) {
+            brandCounts[brand] = { count: 0, totalSentiment: 0 }
+          }
+          brandCounts[brand].count++
+          brandCounts[brand].totalSentiment += tool.sentiment || tool.sentimiento || 0
+          if (isGenially(brand)) {
+            geniallyMentions++
+            hasGeniallyInQuery = true
+            console.log(`¡Genially encontrado en la query ${index + 1}!
 `)
-        }
-      })
+          }
+        })
       }
       // Si Genially aparece en esta query, incrementar el contador
       if (hasGeniallyInQuery) {
@@ -405,11 +428,11 @@ export default function MarketShareAnalyzer() {
     })
 
     // Calcular menciones de marcas
-    const totalQueriesWithBrands = data.filter((item) => {
+    const totalQueriesWithBrands = data.filter((item: SampleDatasetItem) => {
       let tools: any[] = [];
       try {
         tools = item.json_content ? JSON.parse(item.json_content) : [];
-      } catch {}
+      } catch { }
       return tools.length > 0;
     }).length
 
@@ -475,7 +498,7 @@ export default function MarketShareAnalyzer() {
       let tools: any[] = [];
       try {
         tools = item.json_content ? JSON.parse(item.json_content) : [];
-      } catch {}
+      } catch { }
       return Array.isArray(tools) && tools.length > 0;
     })
 
@@ -484,7 +507,7 @@ export default function MarketShareAnalyzer() {
       let tools: any[] = [];
       try {
         tools = item.json_content ? JSON.parse(item.json_content) : [];
-      } catch {}
+      } catch { }
       return tools.some((tool: any) => (tool.name || tool.nombre || "").toLowerCase().includes("genially"));
     })
 
@@ -504,19 +527,19 @@ export default function MarketShareAnalyzer() {
             tools = parsed.tools;
           }
         }
-      } catch {}
+      } catch { }
       if (Array.isArray(tools)) {
         tools.forEach((tool: any) => {
-        const brandName = tool.name || tool.nombre || ""
-        if (brandName) {
-          if (!brandCounts[brandName]) {
-            brandCounts[brandName] = { count: 0, totalSentiment: 0 }
+          const brandName = tool.name || tool.nombre || ""
+          if (brandName) {
+            if (!brandCounts[brandName]) {
+              brandCounts[brandName] = { count: 0, totalSentiment: 0 }
+            }
+            brandCounts[brandName].count += 1
+            brandCounts[brandName].totalSentiment += tool.sentiment || tool.sentimiento || 0
+            totalBrandMentions++
           }
-          brandCounts[brandName].count += 1
-          brandCounts[brandName].totalSentiment += tool.sentiment || tool.sentimiento || 0
-          totalBrandMentions++
-        }
-      })
+        })
       }
     })
 
@@ -545,7 +568,7 @@ export default function MarketShareAnalyzer() {
       let tools: any[] = [];
       try {
         tools = item.json_content ? JSON.parse(item.json_content) : [];
-      } catch {}
+      } catch { }
       if (tools.length > 0) {
         queryCounts[query].withBrands++
       }
@@ -598,7 +621,7 @@ export default function MarketShareAnalyzer() {
       const weekKey = `${year}-W${week.toString().padStart(2, "0")}`;
 
       if (!weekBrandCount[weekKey]) weekBrandCount[weekKey] = {};
-      
+
       // Procesar tools en lugar de marcasMencionadas
       let tools: any[] = [];
       try {
@@ -612,7 +635,7 @@ export default function MarketShareAnalyzer() {
             tools = parsed.tools;
           }
         }
-      } catch {}
+      } catch { }
       if (Array.isArray(tools)) {
         tools.forEach((tool) => {
           const brand = tool.name || tool.nombre || "";
@@ -634,10 +657,10 @@ export default function MarketShareAnalyzer() {
     });
   }, [results]);
 
-  // Eliminar función getBrandDetails y cualquier lógica que use 'tools' o 'query' de SAMPLE_DATASET
+  // Eliminar función getBrandDetails y cualquier lógica que use 'tools' o 'query' de dataset
 
   // Obtener keywords únicas
-  const uniqueKeywords = getUniqueKeywords();
+  const uniqueKeywords = getUniqueKeywords(dataset);
 
   // Pantalla de login
   // if (!isAuthenticated) {
@@ -654,7 +677,7 @@ export default function MarketShareAnalyzer() {
   //           </CardHeader>
   //           <CardContent className="space-y-4">
   //             <div className="space-y-2">
-                
+
   //               <div className="relative">
   //                 <Input
   //                   id="password"
@@ -706,79 +729,92 @@ export default function MarketShareAnalyzer() {
         <SidebarMenu />
         <main className="flex-1 p-4">
           <div className="max-w-8xl mx-auto space-y-6" suppressHydrationWarning>
-            
+
 
             {/* Listado de keywords únicas */}
-                    <Card className="bg-transparent shadow-none border-none">
-                      <CardHeader>
+            <Card className="bg-transparent shadow-none border-none">
+              <CardHeader>
                 <CardTitle>Clusters</CardTitle>
                 <CardDescription>Clusters de palabras clave analizadas para medir la visibilidad de Genially.</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                <div className="overflow-x-auto border rounded-xl">
-                  <table className="min-w-full bg-white">
-                    <thead className="bg-muted">
-                      <tr>
-                        <th className="px-4 py-2 text-left">Clusters</th>
-                        <th className="px-4 py-2 text-right">Rank</th>
-                        <th className="px-2 py-2 text-right w-28">Share of Voice</th>
-                        <th className="px-4 py-2 text-center">Top Brands</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {uniqueKeywords.length === 0 && (
-                        <tr><td colSpan={5} className="text-muted-foreground px-4 py-2">No hay keywords.</td></tr>
-                      )}
-                      {uniqueKeywords.map((kw, idx) => {
-                        const stats = getKeywordStats(kw);
-                        return (
-                          <tr
-                            key={kw}
-                            className="border-b last:border-b-0 hover:bg-muted/40 cursor-pointer"
-                            onClick={() => router.push(`/keyword/${encodeURIComponent(kw)}`)}
-                          >
-                            <td className="px-4 py-2 text-left">{kw}</td>
-                            <td className="px-4 py-2 text-right">{stats.geniallyAvgPos !== null ? stats.geniallyAvgPos.toFixed(2) : '-'}</td>
-                            <td className="px-2 py-2 text-right align-middle w-28">
-                              {stats.geniallyShare !== null ? stats.geniallyShare.toFixed(1) + '%' : '-'}
-                              {stats.geniallyShare !== null && <MiniBar percent={stats.geniallyShare} />}
-                            </td>
-                            <td className="px-4 py-2 text-center">
-                              <div className="flex items-center justify-center gap-2">
-                                {stats.topBrands.map((b, i) => {
-                                  const domain = getBrandDomain(b.brand);
-                                  return (
-                                    <Popover key={b.brand}>
-                                      <PopoverTrigger asChild>
-                                        <span className="inline-block">
-                                          <Badge variant="secondary" className="p-0 bg-white border shadow hover:bg-primary/10">
-                                            {domain ? (
-                                              <img src={`https://www.google.com/s2/favicons?domain=${domain}`} alt={b.brand} className="w-6 h-6 rounded-full" />
-                                            ) : (
-                                              <span className="w-6 h-6 flex items-center justify-center font-bold text-xs">{b.brand[0]}</span>
-                                            )}
-                                          </Badge>
-                                        </span>
-                                      </PopoverTrigger>
-                                      <PopoverContent side="top" className="bg-white border shadow-lg p-2 rounded text-xs max-w-xs">
-                                        {b.brand}
-                                      </PopoverContent>
-                                    </Popover>
-                                  );
-                                })}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+              </CardHeader>
+              <CardContent>
+                {datasetError ? (
+                  <Alert variant="destructive">
+                    <AlertDescription>
+                      <p className="font-semibold">Error al cargar datos desde Firestore</p>
+                      <p className="text-sm mt-1">{datasetError}</p>
+                    </AlertDescription>
+                  </Alert>
+                ) : datasetLoading ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Cargando datos desde Firestore...</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto border rounded-xl">
+                    <table className="min-w-full bg-white">
+                      <thead className="bg-muted">
+                        <tr>
+                          <th className="px-4 py-2 text-left">Clusters</th>
+                          <th className="px-4 py-2 text-right">Rank</th>
+                          <th className="px-2 py-2 text-right w-28">Share of Voice</th>
+                          <th className="px-4 py-2 text-center">Top Brands</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {uniqueKeywords.length === 0 && (
+                          <tr><td colSpan={5} className="text-muted-foreground px-4 py-2">No hay keywords.</td></tr>
+                        )}
+                        {uniqueKeywords.map((kw, idx) => {
+                          const stats = getKeywordStats(kw, dataset);
+                          return (
+                            <tr
+                              key={kw}
+                              className="border-b last:border-b-0 hover:bg-muted/40 cursor-pointer"
+                              onClick={() => router.push(`/keyword/${encodeURIComponent(kw)}`)}
+                            >
+                              <td className="px-4 py-2 text-left">{kw}</td>
+                              <td className="px-4 py-2 text-right">{stats.geniallyAvgPos !== null ? stats.geniallyAvgPos.toFixed(2) : '-'}</td>
+                              <td className="px-2 py-2 text-right align-middle w-28">
+                                {stats.geniallyShare !== null ? stats.geniallyShare.toFixed(1) + '%' : '-'}
+                                {stats.geniallyShare !== null && <MiniBar percent={stats.geniallyShare} />}
+                              </td>
+                              <td className="px-4 py-2 text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                  {stats.topBrands.map((b, i) => {
+                                    const domain = getBrandDomain(b.brand);
+                                    return (
+                                      <Popover key={b.brand}>
+                                        <PopoverTrigger asChild>
+                                          <span className="inline-block">
+                                            <Badge variant="secondary" className="p-0 bg-white border shadow hover:bg-primary/10">
+                                              {domain ? (
+                                                <img src={`https://www.google.com/s2/favicons?domain=${domain}`} alt={b.brand} className="w-6 h-6 rounded-full" />
+                                              ) : (
+                                                <span className="w-6 h-6 flex items-center justify-center font-bold text-xs">{b.brand[0]}</span>
+                                              )}
+                                            </Badge>
+                                          </span>
+                                        </PopoverTrigger>
+                                        <PopoverContent side="top" className="bg-white border shadow-lg p-2 rounded text-xs max-w-xs">
+                                          {b.brand}
+                                        </PopoverContent>
+                                      </Popover>
+                                    );
+                                  })}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
             {/* Eliminar la Card de Debilidades y Oportunidades de la página principal */}
-            
+
           </div>
         </main>
       </div>
