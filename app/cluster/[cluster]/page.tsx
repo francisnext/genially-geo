@@ -1,10 +1,10 @@
 import KeywordPageClient from "./client-page";
 
 interface PageProps {
-  params: Promise<{ keyword: string }>
+  params: Promise<{ cluster: string }>
 }
 
 export default async function KeywordPage({ params }: PageProps) {
-  const { keyword } = await params;
-  return <KeywordPageClient keyword={keyword} />;
+  const { cluster } = await params;
+  return <KeywordPageClient cluster={cluster} />;
 }

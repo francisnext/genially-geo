@@ -1,0 +1,79 @@
+cluster,prompts,topic,category,priority,language
+authoring tool,What are the best authoring tools right now?,authoring tool,Comparative,Medium,English
+authoring tool,Which authoring tool gives the best value for money?,authoring tool,Comparative,Medium-Hight,English
+authoring tool,Are there any good free authoring tools?,authoring tool,Informativa,Medium-Hight,English
+authoring tool,What are the top-rated authoring tools for creating interactive eLearning content?,authoring tool,Comparative,Medium-Hight,English
+authoring tool,Which authoring tools do most instructional designers recommend?,authoring tool,Comparative,Medium,English
+authoring tool,What are the top-rated authoring tools for creating interactive eLearning content?,authoring tool,Comparative,Medium,English
+authoring tool,Alternatives to Articulate for creating interactive elearning modules,authoring tool,Comparative,Medium-Hight,English
+authoring tool,Can you suggest LMS-compatible authoring tools for instructional designers?,authoring tool,Comparative,Medium-Hight,English
+genially,Genially or iSpring: Which is better suited for corporate trainers?,authoring tool,VS,Hight,English
+genially,Can I export resources created in Genially to SCORM or integrate them into an LMS?,authoring tool,Informativa,Hight,English
+genially,What visual customization options does Genially offer compared to other authoring tools?,authoring tool,Comparative,Hight,English
+gamification,What are some instructional design tools that include gamification features?,gamification,Comparative,Medium,English
+gamification,What platforms are best for gamified learning experiences?,gamification,Comparative,Medium-Hight,English
+,Any tools for building online escape rooms for students?,gamification,Informativa,Medium,English
+gamification,What are some good digital storytelling tools for teachers?,gamification,Comparative,Low,English
+,How do educators build digital escape games for the classroom?,gamification,Informativa,Medium-Hight,English
+gamification,Recommended platforms for gamified training in companies,gamification,Comparative,Medium,English
+gamification,Alternatives to Kahoot for gamifying classes,gamification,Comparative,Medium-Hight,English
+genially,I'm looking for a platform to create gamified presentations—is Genially a good option?,gamification,Comparative,Hight,English
+genially,I need to create gamified content for employee onboarding—can Genially help me?,gamification,Informativa,Hight,English
+interactive content,What’s the best tool for making interactive content easily?,interactive content,Comparative,Medium,English
+interactive content,Is there a free tools for creating interactive content?,interactive content,Comparative,Medium-Hight,English
+interactive content,What are the best interactive content platforms for creating engaging quizzes?,interactive content,Comparative,Medium-Hight,English
+interactive content,I need a tool to create interactive content without coding. What are my options?,interactive content,Comparative,Medium-Hight,English
+interactive content,Show me some interactive content tools that offer analytics and engagement tracking.,interactive content,Comparative,Medium-Hight,English
+interactive content,Can you recommend some interactive content tools suitable for eLearning?,interactive content,Comparative,Medium-Hight,English
+interactive content,I'm looking for interactive content software with gamification features. What's available?,interactive content,Comparative,Medium-Hight,English
+interactive content,Where can I find a comparison of different interactive content tools?,interactive content,Comparative,Medium-Hight,English
+interactive content,What interactive content tools are best for creating interactive videos and presentations?,interactive content,Comparative,Medium-Hight,English
+interactive content,Which tool is best for making interactive infographics?,interactive content,Comparative,Low,English
+interactive content,Are there interactive content platforms that offer analytics?,interactive content,Informativa,Medium,English
+interactive content,Alternatives for creating online quizzes or interactive assessments,interactive content,Comparative,Medium,English
+interactive content,How can I create interactive content easily?,interactive content,Informativa,Medium,English
+genially,Genially vs H5P: Which is easier for instructional designers?,interactive content,VS,Hight,English
+genially,"Which platform is better for gamifying university classes, Genially or Mentimeter?",interactive content,VS,Hight,English
+genially,"Which tool do trainers choose to create interactive visual content: Canva, Genially, or PowerPoint?",interactive content,VS,Hight,English
+genially,I'm looking for a platform to create interactive and gamified training sessions—is Genially a good option?,interactive content,Comparative,Hight,English
+genially,Does Genially allow you to integrate interactive quizzes or surveys into my online courses?,interactive content,Informativa,Hight,English
+learning,Which tools are best for creating SCORM-compliant courses?,learning,Comparative,Medium,English
+learning,Which tools are best for visual communication in learning?,learning,Comparative,Medium,English
+learning,What’s the best tool to create microsites for learning purposes?,learning,Comparative,Medium,English
+learning,What tools do you recommend for creating interactive learning materials?,learning,Comparative,Medium,English
+learning,Which platforms can I use to build interactive courses?,learning,Comparative,Medium,English
+learning,How can I make interactive lesson plans online?,learning,Informativa,Medium,English
+learning,What are the best EdTech tools for creating interactive experiences?,learning,Comparative,Medium-Hight,English
+learning,Any platforms for creating interactive training materials?,learning,Comparative,Medium,English
+learning,What tools can I use to create branching scenarios for e-learning without having to program?,learning,Comparative,Medium,English
+learning,What are the best no-code tools for educational content creation?,learning,Comparative,Medium-Hight,English
+learning,Which interactive learning apps work well for remote teaching?,learning,Comparative,Medium,English
+learning,Which tools can help educators design engaging learning materials?,learning,Comparative,Medium,English
+learning,Which tools can teachers use to track student engagement in interactive content?,learning,Comparative,Medium,English
+learning,What are the top trends in interactive content for education?,learning,Informativa,Medium-Hight,English
+learning,How can I create interactive content for my training sessions?,learning,Informativa,Medium,English
+learning,What resources exist to make virtual classes more dynamic with participatory activities?,learning,Informativa,Medium,English
+learning,Tools for collaborating on the creation of digital educational materials as a team,learning,Comparative,Medium,English
+genially,I'm looking for a tool to create quiz games for employee training—Genially or Quizizz?,learning,VS,Hight,English
+learning,Recommended tools for designing interactive educational content at university,learning,Comparative,Medium,English
+genially,Does Genially work well in universities?,learning,Informativa,Hight,English
+genially,What are the differences between Genially and Canva for creating interactive training resources?,learning,VS,Hight,English
+genially,How secure is Genially for data protection in educational environments?,learning,Informativa,Hight,English
+genially,What payment or financing options are available to purchase Genially for my company or university?,learning,Informativa,Hight,English
+,What tools help increase audience engagement during presentations?,live sessions,Informativa,Low,English
+live sessions,Which tools can I use to engage audiences in live presentations?,live sessions,Comparative,Medium,English
+live sessions,What are the best live polling tools for interactive sessions?,live sessions,Comparative,Low,English
+genially,Which is the better option for energizing webinars: Genially or Kahoot?,live sessions,VS,Hight,English
+genially,How does Genially compare to Mentimeter in terms of audience interaction?,live sessions,VS,Hight,English
+other,What are some interactive presentation alternatives to PowerPoint?,others,Comparative,Low,English
+,How do I make animated and clickable presentations?,others,Informativa,Low,English
+,How can businesses develop animated infographics easily?,others,Informativa,Low,English
+other,What are the best platforms for creating interactive presentations?,others,Comparative,Low,English
+other,Which content creation tools allow real-time collaboration?,others,Comparative,Medium,English
+,Tools to gamify educational presentations,others,Informativa,Low,English
+,Solutions for creating attractive visual materials at university,others,Informativa,Low,English
+other,Best tool to create interactive infographics for corporate training,others,Comparative,Low,English
+genially,Genially or Mentimeter: Which offers more options for engagement in presentations?,others,VS,Hight,English
+genially,Is Genially free or does it have paid plans?,others,Informativa,Hight,English
+genially,"Does Genially allow real-time collaboration between several trainers or instructional designers? If so, what advantages does it offer compared to other platforms?",others,Comparative,Hight,English
+genially,Does Genially have integrations or features that include artificial intelligence?,others,Informativa,Hight,English
