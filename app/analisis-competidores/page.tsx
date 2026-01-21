@@ -4,9 +4,26 @@ import React, { useState, useEffect, useMemo, useRef } from "react"
 import SidebarMenu from "@/components/SidebarMenu"
 import Topbar from "@/components/Topbar"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList } from "recharts"
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line, CartesianGrid, Legend, ScatterChart, Scatter, ZAxis } from "recharts"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { getSampleDataset, SampleDatasetItem } from "@/data/sample-dataset"
+import { getSampleDataset, SampleDatasetItem, getUniqueKeywords } from "@/data/sample-dataset"
+import { normalizeBrandName, isDirectCompetitor, DIRECT_COMPETITORS } from "@/lib/competitors"
+import { Search, Trophy, TrendingDown, Target, AlertCircle, Calendar, Filter, ThumbsUp, ThumbsDown } from "lucide-react"
+
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-white p-3 border shadow-md rounded-lg">
+        <p className="font-bold text-sm mb-1">{data.name}</p>
+        <p className="text-xs text-slate-500">SoV: {data?.sov?.toFixed(1)}%</p>
+        <p className="text-xs text-slate-500">Sentimiento: {data?.avgSentiment?.toFixed(0)}/100</p>
+        <p className="text-xs text-slate-500">Menciones: {data?.totalMentions}</p>
+      </div>
+    );
+  }
+  return null;
+};
 
 export default function AnalisisCompetidoresPage() {
   // ---------- State ----------
@@ -16,17 +33,15 @@ export default function AnalisisCompetidoresPage() {
 
   // UI state
   const [selectedIa, setSelectedIa] = useState<string>("Todas")
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [inputValue, setInputValue] = useState("")
+  const [selectedCluster, setSelectedCluster] = useState<string>("Todos")
 
-  // Load data from Firestore on mount
+  // Load data from Firestore
   useEffect(() => {
     const load = async () => {
       try {
         const data = await getSampleDataset()
         setDataset(data)
       } catch (e) {
-        console.error(e)
         setError(e instanceof Error ? e.message : "Error loading data")
       } finally {
         setLoading(false)
@@ -35,244 +50,476 @@ export default function AnalisisCompetidoresPage() {
     load()
   }, [])
 
-  // ---------- Derived data ----------
-  // IA options (unique IA values in dataset)
+  // ---------- Derived Data ----------
   const iaOptions = useMemo(() => {
     const set = new Set<string>()
     dataset.forEach(d => d.ia && set.add(d.ia))
     return ["Todas", ...Array.from(set)]
   }, [dataset])
 
-  // Tools for the selected IA
-  const tools = useMemo(() => {
-    const filtered = selectedIa === "Todas" ? dataset : dataset.filter(d => d.ia === selectedIa)
-    let toolsArr: any[] = []
-    filtered.forEach(d => {
-      try {
-        if (typeof d.json_content === "string") {
-          const arr = JSON.parse(d.json_content)
-          if (Array.isArray(arr)) toolsArr = toolsArr.concat(arr)
-        }
-      } catch { }
-    })
-    const map = new Map<string, any>()
-    toolsArr.forEach(t => {
-      if (!map.has(t.name) || (t.position || 99) < (map.get(t.name).position || 99)) {
-        map.set(t.name, t)
-      }
-    })
-    const uniq = Array.from(map.values())
-    uniq.sort((a, b) => (a.position || 99) - (b.position || 99))
-    return uniq
-  }, [dataset, selectedIa])
-
-  // All unique brands (including Genially normalization)
-  const allBrands = useMemo(() => {
-    const set = new Set<string>()
-    dataset.forEach(d => {
-      try {
-        if (typeof d.json_content === "string") {
-          const arr = JSON.parse(d.json_content)
-          if (Array.isArray(arr)) {
-            arr.forEach((tool: any) => {
-              let name = tool?.name ?? tool?.nombre
-              if (typeof name !== "string" || !name) return
-              if (name.toLowerCase().includes("genially")) name = "Genially"
-              set.add(name)
-            })
-          }
-        }
-      } catch { }
-    })
-    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  const clusterOptions = useMemo(() => {
+    return ["Todos", ...getUniqueKeywords(dataset)]
   }, [dataset])
 
-  // Default selected brands (Genially + first 4 others)
-  const defaultBrands = useMemo(() => {
-    const brands = ["Genially"]
-    for (const b of allBrands) {
-      if (b !== "Genially" && brands.length < 5) brands.push(b)
+  // Process data for all brands
+  const brandStats = useMemo(() => {
+    let filtered = selectedIa === "Todas" ? dataset : dataset.filter(d => d.ia === selectedIa)
+    if (selectedCluster !== "Todos") {
+      filtered = filtered.filter(d => (d.keyword || d.cluster || "").toLowerCase() === selectedCluster.toLowerCase())
     }
-    return brands
-  }, [allBrands])
 
-  const [selectedBrands, setSelectedBrands] = useState<string[]>(defaultBrands)
+    const totalPrompts = new Set(filtered.map(d => d.prompt)).size
+    const statsMap = new Map<string, {
+      name: string,
+      mentions: number,
+      positions: number[],
+      prompts: Set<string>,
+      sentimentSum: number,
+      sentimentCount: number,
+      pros: Set<string>,
+      cons: Set<string>
+    }>()
 
-  // Brand suggestions for the input
-  const brandSuggestions = useMemo(() => {
-    return allBrands.filter(b => {
-      if (!b) return false
-      if (selectedBrands.includes(b)) return false
-      const q = (inputValue || "").toLowerCase()
-      return b.toLowerCase().includes(q)
-    })
-  }, [allBrands, selectedBrands, inputValue])
-
-  const handleAddBrand = (brand: string) => {
-    if (!selectedBrands.includes(brand)) {
-      setSelectedBrands([...selectedBrands, brand])
-      setInputValue("")
-      if (inputRef.current) inputRef.current.value = ""
-    }
-  }
-
-  const chipColors = [
-    "bg-blue-100 text-blue-700 border-blue-300",
-    "bg-green-100 text-green-700 border-green-300",
-    "bg-orange-100 text-orange-700 border-orange-300",
-    "bg-pink-100 text-pink-700 border-pink-300",
-    "bg-yellow-100 text-yellow-700 border-yellow-300",
-    "bg-purple-100 text-purple-700 border-purple-300",
-    "bg-red-100 text-red-700 border-red-300",
-    "bg-lime-100 text-lime-700 border-lime-300",
-  ]
-
-  const handleBrandChange = (brand: string, checked: boolean) => {
-    if (brand === "Genially") return
-    if (checked) setSelectedBrands([...selectedBrands, brand])
-    else setSelectedBrands(selectedBrands.filter(b => b !== brand))
-  }
-
-  const filteredTools = useMemo(() => tools.filter(t => selectedBrands.includes(t.name)), [tools, selectedBrands])
-
-  // Share of Voice data for the chart
-  const shareData = useMemo(() => {
-    if (!selectedIa) return []
-    const iaList = selectedIa === "Todas" ? iaOptions.slice(1) : [selectedIa]
-    const iaTotals: Record<string, number> = {}
-    const iaBrandStats: Record<string, Record<string, number>> = {}
-    dataset.forEach(item => {
-      if (!iaList.includes(item.ia || "")) return
-      const iaKey = item.ia!
-      iaTotals[iaKey] = (iaTotals[iaKey] || 0) + 1
-      if (!item.json_content) return
+    filtered.forEach(d => {
       try {
-        const arr = JSON.parse(item.json_content)
-        if (Array.isArray(arr)) {
-          arr.forEach((tool: any) => {
-            let name = tool.name || tool.nombre
-            if (!name) return
-            if (name.toLowerCase().includes('genially')) name = 'Genially'
-            if (!iaBrandStats[iaKey]) iaBrandStats[iaKey] = {}
-            iaBrandStats[iaKey][name] = (iaBrandStats[iaKey][name] || 0) + 1
-          })
+        if (!d.json_content) return
+        const tools = JSON.parse(d.json_content)
+        if (!Array.isArray(tools)) return
+
+        tools.forEach((t: any) => {
+          const rawName = t.name || t.nombre
+          if (!rawName) return
+          const name = normalizeBrandName(rawName)
+
+          if (!statsMap.has(name)) {
+            statsMap.set(name, { name, mentions: 0, positions: [], prompts: new Set(), sentimentSum: 0, sentimentCount: 0, pros: new Set(), cons: new Set() })
+          }
+
+          const s = statsMap.get(name)!
+          s.mentions++
+          s.prompts.add(d.prompt || "")
+          if (t.position) s.positions.push(Number(t.position))
+          if (t.sentiment !== undefined) {
+            s.sentimentSum += Number(t.sentiment);
+            s.sentimentCount++;
+          }
+          // Collect pros and cons if available (new feature)
+          if (Array.isArray(t.pros)) t.pros.forEach((p: string) => s.pros.add(p));
+          if (Array.isArray(t.cons)) t.cons.forEach((c: string) => s.cons.add(c));
+        })
+      } catch { }
+    })
+
+    const result = Array.from(statsMap.values()).map(s => ({
+      name: s.name,
+      sov: totalPrompts > 0 ? (s.prompts.size / totalPrompts) * 100 : 0,
+      avgPos: s.positions.length > 0 ? s.positions.reduce((a, b) => a + b, 0) / s.positions.length : null,
+      totalMentions: s.mentions,
+      isDirect: isDirectCompetitor(s.name),
+      avgSentiment: s.sentimentCount > 0 ? (s.sentimentSum / s.sentimentCount) * 100 : 50, // Normalize 0-1 to 0-100, default 50
+      pros: Array.from(s.pros).slice(0, 5),
+      cons: Array.from(s.cons).slice(0, 5)
+    }))
+
+    return result.sort((a, b) => b.sov - a.sov)
+  }, [dataset, selectedIa, selectedCluster])
+
+  // Historical Evolution Data
+  const evolutionData = useMemo(() => {
+    let filtered = selectedIa === "Todas" ? dataset : dataset.filter(d => d.ia === selectedIa)
+    if (selectedCluster !== "Todos") {
+      filtered = filtered.filter(d => (d.keyword || d.cluster || "").toLowerCase() === selectedCluster.toLowerCase())
+    }
+
+    // Group by Date
+    const dateMap = new Map<string, { date: string, Genially: number, Competidores: number }>()
+
+    filtered.forEach(d => {
+      if (!d.date) return
+      const dateKey = d.date.split('T')[0]
+      if (!dateMap.has(dateKey)) {
+        dateMap.set(dateKey, { date: dateKey, Genially: 0, Competidores: 0 })
+      }
+
+      const entry = dateMap.get(dateKey)!
+      try {
+        const tools = JSON.parse(d.json_content || "[]")
+        const normalizedTools = tools.map((t: any) => normalizeBrandName(t.name || t.nombre))
+
+        if (normalizedTools.includes("Genially")) {
+          entry.Genially++
+        }
+
+        const hasDirectCompetitor = normalizedTools.some((b: string) => DIRECT_COMPETITORS.includes(b))
+        if (hasDirectCompetitor) {
+          entry.Competidores++
         }
       } catch { }
     })
-    return selectedBrands.map(brand => {
-      let sum = 0
-      let count = 0
-      iaList.forEach(ia => {
-        const total = iaTotals[ia] || 0
-        const brandCount = iaBrandStats[ia]?.[brand] || 0
-        if (total > 0) {
-          sum += (brandCount / total) * 100
-          count++
-        }
-      })
-      return { name: brand, share: count > 0 ? sum / count : 0 }
+
+    return Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date))
+  }, [dataset, selectedIa, selectedCluster])
+
+  // Identification of Gaps
+  const gapAnalysis = useMemo(() => {
+    let filtered = selectedIa === "Todas" ? dataset : dataset.filter(d => d.ia === selectedIa)
+    if (selectedCluster !== "Todos") {
+      filtered = filtered.filter(d => (d.keyword || d.cluster || "").toLowerCase() === selectedCluster.toLowerCase())
+    }
+
+    const groupByPrompt: Record<string, string[]> = {}
+
+    filtered.forEach(d => {
+      if (!d.prompt) return
+      try {
+        const tools = JSON.parse(d.json_content || "[]")
+        groupByPrompt[d.prompt] = tools.map((t: any) => normalizeBrandName(t.name || t.nombre))
+      } catch { }
     })
-  }, [selectedBrands, selectedIa, dataset, iaOptions])
 
-  // ---------- Render ----------
-  if (loading) {
-    return (
-      <>
-        <Topbar />
-        <div className="bg-[#F9F8FC] min-h-screen flex items-center justify-center">
-          <p className="text-muted-foreground">Cargando datos...</p>
-        </div>
-      </>
-    )
-  }
+    const gaps: { prompt: string, competitors: string[] }[] = []
+    Object.entries(groupByPrompt).forEach(([prompt, brands]) => {
+      if (!brands.includes("Genially")) {
+        const competitorsInPrompt = brands.filter(b => DIRECT_COMPETITORS.includes(b))
+        if (competitorsInPrompt.length > 0) {
+          gaps.push({ prompt, competitors: Array.from(new Set(competitorsInPrompt)) })
+        }
+      }
+    })
 
-  if (error) {
-    return (
-      <>
-        <Topbar />
-        <div className="bg-[#F9F8FC] min-h-screen flex items-center justify-center p-4">
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        </div>
-      </>
-    )
-  }
+    return gaps.slice(0, 8)
+  }, [dataset, selectedIa, selectedCluster])
+
+  const geniallyStats = useMemo(() => brandStats.find(b => b.name === "Genially"), [brandStats])
+  const topCompetitor = useMemo(() => brandStats.filter(b => b.name !== "Genially" && b.isDirect)[0], [brandStats])
+
+  const [showOnlyDirect, setShowOnlyDirect] = useState(true)
+  const displayBrands = useMemo(() => {
+    let filtered = showOnlyDirect ? brandStats.filter(b => b.isDirect) : brandStats
+    return filtered.slice(0, 15)
+  }, [brandStats, showOnlyDirect])
+
+  if (loading) return <div className="p-8 text-center text-muted-foreground">Cargando análisis estratégico...</div>
 
   return (
     <>
       <Topbar />
-      <div className="bg-[#F9F8FC] min-h-screen bg-gradient-to-br from-[var(--background)] to-[var(--primary)] flex">
+      <div className="bg-[#F9F8FC] min-h-screen bg-gradient-to-br from-[var(--background)] to-[var(--primary)] flex text-slate-800">
         <SidebarMenu />
-        <main className="flex-1 p-4 flex items-center justify-center">
-          <div className="w-full max-w-8xl mx-auto space-y-6">
-            <Card className="md:col-span-2 bg-transparent shadow-none border-none">
-              <CardHeader>
-                <CardTitle>Análisis de competidores (WIP)</CardTitle>
-                <CardDescription>Explora el análisis comparativo de Genially frente a sus principales competidores en el sector EdTech.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {/* IA selector */}
-                <div className="mb-4">
-                  <label className="font-semibold mr-2">Filtrar por IA:</label>
-                  <select className="border rounded px-2 py-1" value={selectedIa} onChange={e => setSelectedIa(e.target.value)}>
-                    {iaOptions.map(ia => (
-                      <option key={ia} value={ia}>{ia}</option>
-                    ))}
+        <main className="flex-1 p-6 space-y-6">
+          <div className="max-w-7xl mx-auto space-y-6">
+
+            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold flex items-center gap-2">
+                  <Target className="text-primary w-6 h-6" />
+                  Estrategia de Competidores
+                </h1>
+                <p className="text-slate-500 text-sm">Posicionamiento histórico y comparativo frente al mercado.</p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm">
+                  <Search className="w-4 h-4 text-slate-400" />
+                  <select
+                    className="text-sm border-none focus:ring-0 bg-transparent"
+                    value={selectedIa}
+                    onChange={e => setSelectedIa(e.target.value)}
+                  >
+                    {iaOptions.map(ia => <option key={ia} value={ia}>{ia === "Todas" ? "Todas las IAs" : ia}</option>)}
                   </select>
                 </div>
-                {/* Brand selector */}
-                <div className="mb-4">
-                  <label className="font-semibold mr-2">Marcas a comparar (mín. 5 por defecto):</label>
-                  <div className="flex flex-wrap gap-2 mt-2 items-center">
-                    {selectedBrands.map((brand, idx) => (
-                      <span key={brand} className={`inline-flex items-center border rounded-full px-3 py-1 text-xs font-medium ${brand === "Genially" ? "bg-blue-100 text-blue-700 border-blue-300" : chipColors[idx % chipColors.length]} relative`}>
-                        {brand}
-                        {brand === "Genially" && (<span className="ml-2 bg-blue-200 text-blue-800 rounded px-1 text-[10px] font-bold">Genially</span>)}
-                        {brand !== "Genially" && (
-                          <button type="button" className="ml-2 text-xs font-bold focus:outline-none" onClick={() => handleBrandChange(brand, false)} aria-label={`Quitar ${brand}`}>×</button>
-                        )}
-                      </span>
-                    ))}
-                    <div className="relative min-w-[160px]">
-                      <input
-                        ref={inputRef}
-                        type="text"
-                        className="border rounded-full px-3 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary w-full"
-                        placeholder="Añadir marca..."
-                        value={inputValue}
-                        onChange={e => setInputValue(e.target.value)}
-                        onKeyDown={e => { if (e.key === "Enter" && brandSuggestions.length > 0) handleAddBrand(brandSuggestions[0]) }}
-                        autoComplete="off"
-                      />
-                      {inputValue && brandSuggestions.length > 0 && (
-                        <ul className="absolute z-10 bg-white border rounded shadow mt-1 w-full max-h-40 overflow-y-auto">
-                          {brandSuggestions.map(b => (
-                            <li key={b} className="px-3 py-1 hover:bg-accent cursor-pointer text-xs" onMouseDown={() => handleAddBrand(b)}>{b}</li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
+
+                <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm">
+                  <Filter className="w-4 h-4 text-slate-400" />
+                  <select
+                    className="text-sm border-none focus:ring-0 bg-transparent pr-8"
+                    value={selectedCluster}
+                    onChange={e => setSelectedCluster(e.target.value)}
+                  >
+                    {clusterOptions.map(c => <option key={c} value={c}>{c === "Todos" ? "Todos los Clusters" : c}</option>)}
+                  </select>
+                </div>
+              </div>
+            </header>
+
+            {/* Scorecards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card className="bg-white border-none shadow-sm h-32 flex flex-col justify-center px-5">
+                <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full w-fit mb-2">CUOTA DE VOZ</span>
+                <h3 className="text-2xl font-black">{geniallyStats?.sov.toFixed(1)}%</h3>
+                <p className="text-[10px] text-slate-400 font-medium">SOV Acumulado Genially</p>
+              </Card>
+
+              <Card className="bg-white border-none shadow-sm h-32 flex flex-col justify-center px-5">
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full w-fit mb-2">POSICIÓN (CUANDO APARECE)</span>
+                <h3 className="text-2xl font-black">{geniallyStats?.avgPos !== null ? `#${geniallyStats?.avgPos?.toFixed(1)}` : '-'}</h3>
+                <p className="text-[10px] text-slate-400 font-medium">Posición (cuando aparece)</p>
+              </Card>
+
+              <Card className="bg-white border-none shadow-sm h-32 flex flex-col justify-center px-5">
+                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full w-fit mb-2">LÍDER DE CATEGORÍA</span>
+                <h3 className="text-lg font-bold truncate">{topCompetitor?.name || "Sin datos"}</h3>
+                <p className="text-[10px] text-slate-400 font-medium">{topCompetitor?.sov.toFixed(1)}% de visibilidad</p>
+              </Card>
+
+              <Card className="bg-primary/5 border-primary/10 border shadow-sm h-32 flex flex-col justify-center px-5">
+                <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full w-fit mb-2">GAPS DETECTADOS</span>
+                <h3 className="text-2xl font-black">{gapAnalysis.length}</h3>
+                <p className="text-[10px] text-slate-400 font-medium">Faltas de presencia críticas</p>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+              {/* Historical Evolution Chart */}
+              <Card className="lg:col-span-2 border-none shadow-sm bg-white">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-primary" />
+                    Evolución Histórica de Presencia
+                  </CardTitle>
+                  <CardDescription>Menciones diarias: Genially vs Competidores Directos.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px] w-full mt-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={evolutionData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis
+                          dataKey="date"
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fontSize: 10, fill: '#94a3b8' }}
+                        />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                        <Tooltip
+                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                        />
+                        <Legend iconType="circle" />
+                        <Line
+                          type="monotone"
+                          dataKey="Genially"
+                          stroke="#5028FF"
+                          strokeWidth={3}
+                          dot={{ r: 4, fill: "#5028FF" }}
+                          activeDot={{ r: 6 }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="Competidores"
+                          stroke="#94a3b8"
+                          strokeWidth={2}
+                          strokeDasharray="5 5"
+                          dot={{ r: 3, fill: "#94a3b8" }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
-                </div>
-                {/* Chart */}
-                <div style={{ width: "100%", height: 400 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={shareData} layout="vertical" margin={{ left: 40, right: 20, top: 20, bottom: 20 }}>
-                      <XAxis type="number" domain={[0, 100]} tickFormatter={v => `${v}%`} allowDecimals={false} label={{ value: "Share of Voice (%)", position: "insideBottom", offset: -5 }} />
-                      <YAxis type="category" dataKey="name" width={180} />
-                      <Tooltip formatter={(v: any) => `${v.toFixed(1)}%`} />
-                      <Bar dataKey="share" fill="#a78bfa">
-                        <LabelList dataKey="share" position="right" formatter={(v: any) => `${v.toFixed(1)}%`} />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+
+              {/* SoV Ranking Chart */}
+              <Card className="border-none shadow-sm bg-white flex flex-col">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-bold">SoV Actual</CardTitle>
+                  <button
+                    onClick={() => setShowOnlyDirect(!showOnlyDirect)}
+                    className="text-[10px] bg-slate-50 border px-2 py-1 rounded-full font-bold text-slate-500"
+                  >
+                    {showOnlyDirect ? 'Ver todos' : 'Solo directos'}
+                  </button>
+                </CardHeader>
+                <CardContent className="flex-1">
+                  <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={displayBrands.slice(0, 8)} layout="vertical">
+                        <XAxis type="number" hide />
+                        <YAxis
+                          type="category"
+                          dataKey="name"
+                          axisLine={false}
+                          tickLine={false}
+                          width={80}
+                          tick={{ fontSize: 10, fontWeight: 600, fill: '#334155' }}
+                        />
+                        <Tooltip cursor={{ fill: '#f8fafc' }} />
+                        <Bar dataKey="sov" radius={[0, 4, 4, 0]} barSize={12}>
+                          {displayBrands.map((entry, index) => (
+                            <Cell key={index} fill={entry.name === "Genially" ? "#5028FF" : "#cbd5e1"} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+
+            {/* Sentiment Analysis Module */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Scatter Chart: SoV vs Sentiment */}
+              <Card className="lg:col-span-2 border-none shadow-sm bg-white">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <ThumbsUp className="w-5 h-5 text-emerald-500" />
+                    Matriz de Sentimiento & SoV
+                  </CardTitle>
+                  <CardDescription>Visualiza qué marcas dominan la conversación y cómo se perciben.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[350px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          type="number"
+                          dataKey="sov"
+                          name="Share of Voice"
+                          unit="%"
+                          label={{ value: "Share of Voice (%)", position: "bottom", offset: 0 }}
+                        />
+                        <YAxis
+                          type="number"
+                          dataKey="avgSentiment"
+                          name="Sentimiento"
+                          domain={[0, 100]}
+                          label={{ value: "Sentimiento Promedio", angle: -90, position: "left" }}
+                        />
+                        <ZAxis type="number" dataKey="totalMentions" range={[60, 400]} name="Menciones" />
+                        <Tooltip cursor={{ strokeDasharray: '3 3' }} content={<CustomTooltip />} />
+                        <Legend />
+                        <Scatter name="Marcas" data={displayBrands} fill="#8884d8">
+                          {displayBrands.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.name === 'Genially' ? '#5028FF' : entry.isDirect ? '#F59E0B' : '#94A3B8'} />
+                          ))}
+                        </Scatter>
+                      </ScatterChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Sentiment Drivers */}
+              <Card className="lg:col-span-1 border-none shadow-sm bg-white flex flex-col">
+                <CardHeader>
+                  <CardTitle className="text-sm font-bold flex items-center gap-2">
+                    <TrendingDown className="w-4 h-4 text-amber-500" />
+                    Factores de Sentimiento (Genially)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex-1 overflow-y-auto space-y-4 p-4 pt-0">
+                  <div>
+                    <h5 className="text-xs font-black text-emerald-600 uppercase mb-2 flex items-center gap-1">
+                      <ThumbsUp className="w-3 h-3" /> Fortalezas
+                    </h5>
+                    {geniallyStats?.pros && geniallyStats.pros.length > 0 ? (
+                      <ul className="space-y-2">
+                        {geniallyStats.pros.map((pro, i) => (
+                          <li key={i} className="text-xs text-slate-600 bg-emerald-50 p-2 rounded border border-emerald-100">
+                            {pro}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs text-slate-400 italic">No detectadas en esta muestra.</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <h5 className="text-xs font-black text-rose-500 uppercase mb-2 flex items-center gap-1">
+                      <ThumbsDown className="w-3 h-3" /> Áreas de Mejora
+                    </h5>
+                    {geniallyStats?.cons && geniallyStats.cons.length > 0 ? (
+                      <ul className="space-y-2">
+                        {geniallyStats.cons.map((con, i) => (
+                          <li key={i} className="text-xs text-slate-600 bg-rose-50 p-2 rounded border border-rose-100">
+                            {con}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs text-slate-400 italic">No detectadas en esta muestra.</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              {/* Gap Analysis Box */}
+              <Card className="lg:col-span-1 border-none shadow-sm bg-white flex flex-col">
+                <CardHeader>
+                  <CardTitle className="text-sm font-bold flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-primary" />
+                    Gap Analysis
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex-1 overflow-y-auto max-h-[600px] space-y-3 p-4 pt-0">
+                  {gapAnalysis.map((gap, i) => (
+                    <div key={i} className="p-2.5 bg-slate-50 rounded border border-slate-100">
+                      <p className="text-[10px] font-bold text-slate-700 leading-tight mb-1.5">{gap.prompt}</p>
+                      <div className="flex flex-wrap gap-1">
+                        {gap.competitors.slice(0, 3).map(c => (
+                          <span key={c} className="text-[8px] bg-white border px-1 py-0.5 rounded text-slate-400 font-mono">{c}</span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              {/* Comparison Table */}
+              <Card className="lg:col-span-3 border-none shadow-sm bg-white">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-bold">Guerra de Posiciones</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-slate-50 text-slate-500 border-y">
+                        <tr>
+                          <th className="px-5 py-3 font-bold">Marca</th>
+                          <th className="px-5 py-3 font-bold text-center">Share of Voice</th>
+                          <th className="px-5 py-3 font-bold text-center">Posición (cuando aparece)</th>
+                          <th className="px-5 py-3 font-bold text-right">Impacto</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {displayBrands.map((brand) => (
+                          <tr key={brand.name} className={`hover:bg-slate-50/50 transition-colors ${brand.name === "Genially" ? 'bg-primary/5' : ''}`}>
+                            <td className="px-5 py-3.5 font-bold flex items-center gap-2">
+                              {brand.name === "Genially" && <Trophy className="w-3 h-3 text-amber-500" />}
+                              {brand.name}
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <div className="flex items-center gap-2 justify-center">
+                                <div className="w-16 bg-slate-100 h-1 rounded-full overflow-hidden">
+                                  <div className={`h-full ${brand.name === "Genially" ? 'bg-primary' : 'bg-slate-300'}`} style={{ width: `${brand.sov}%` }} />
+                                </div>
+                                <span className="text-[10px] font-mono">{brand.sov.toFixed(1)}%</span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-3.5 text-center">
+                              <span className={`font-mono font-bold ${brand.avgPos !== null && brand.avgPos <= 3 ? 'text-emerald-500' : 'text-slate-400'}`}>
+                                {brand.avgPos !== null ? `#${brand.avgPos.toFixed(1)}` : '-'}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3.5 text-right text-slate-400 font-mono">
+                              {brand.totalMentions} menc.
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
           </div>
-        </main>
-      </div>
+        </main >
+      </div >
     </>
   )
 }

@@ -12,6 +12,7 @@ export interface SampleDatasetItem {
   sources?: string;
   date?: string;
   content?: string;
+  batch_id?: string;
 }
 
 // Cache para los datos de Firestore

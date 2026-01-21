@@ -1,93 +1,19 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useMemo, useEffect } from "react"
+import React, { useState, useMemo, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Input } from "@/components/ui/input"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-// Eliminados los imports de gráficos y sus iconos
-// import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, Legend, ScatterChart, Scatter, ZAxis } from "recharts"
-// import { Upload, BarChart3, PieChartIcon, Lock, Eye, EyeOff, FilterIcon, XCircle } from "lucide-react"
-import { Upload, Lock, Eye, EyeOff, FilterIcon, XCircle } from "lucide-react"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-
+import { Target, Trophy, Search, Activity, AlertCircle, TrendingUp, Globe } from "lucide-react"
 import { getSampleDataset, getUniqueKeywords, SampleDatasetItem } from "@/data/sample-dataset"
-import geoDiagnostico from "@/data/geo-diagnostico.json"
+import { normalizeBrandName } from "@/lib/competitors"
 import SidebarMenu from "@/components/SidebarMenu"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
-import Topbar from "@/components/Topbar";
+import Topbar from "@/components/Topbar"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from "recharts"
+import { getLatestDataBatch } from "@/lib/strategic-report-service"
 
-interface Debilidad {
-  descripcion: string;
-  prioridad: "alta" | "media" | "baja";
-}
-
-interface Estrategia {
-  accion: string;
-  coste: string;
-  prioridad: "alta" | "media" | "baja";
-}
-
-interface MarketShareResult {
-  geniallyMarketShare: number
-  totalQueriesWithBrands: number
-  queriesWithGenially: number
-  brandDistribution: { brand: string; count: number; percentage: number; avgSentiment: number }[]
-  totalBrandMentions: number
-  queryFrequencies: QueryFrequency[]
-  totalQueries: number
-  uniqueQueries: number
-  rawData: SampleDatasetItem[]
-}
-
-interface QueryFrequency {
-  query: string
-  count: number
-  percentage: number
-  withBrands: number
-  withGenially: number
-}
-
-interface BrandDetail {
-  query: string
-  highlights: string[]
-  pros: string[]
-  cons: string[]
-  sentimiento: number
-}
-
-interface BrandDetails {
-  [brand: string]: BrandDetail[]
-}
-
-const COLORS = [
-  "#0088FE",
-  "#00C49F",
-  "#FFBB28",
-  "#FF8042",
-  "#8884D8",
-  "#82CA9D",
-  "#FFC658",
-  "#FF7C7C",
-  "#8DD1E1",
-  "#D084D0",
-]
-
-// Función auxiliar para obtener el dominio de una marca
+// Domain map for favicons
 const BRAND_DOMAIN_MAP: Record<string, string> = {
   'Genially': 'genially.com',
   'H5P': 'h5p.org',
@@ -113,6 +39,7 @@ const BRAND_DOMAIN_MAP: Record<string, string> = {
   'Socrative': 'socrative.com',
   'Adobe Captivate': 'adobe.com',
 };
+
 function getBrandDomain(brand: string): string | null {
   const match = brand.match(/([a-zA-Z0-9-]+\.[a-zA-Z]{2,})$/);
   if (match) return match[1];
@@ -121,699 +48,464 @@ function getBrandDomain(brand: string): string | null {
   return null;
 }
 
-// Calcular métricas por keyword
 function getKeywordStats(keyword: string, datasetItems: SampleDatasetItem[]) {
   const items = datasetItems.filter((item: SampleDatasetItem) => (item.keyword || '').toLowerCase() === keyword.toLowerCase());
   let geniallyPositions: number[] = [];
   let geniallyMentions = 0;
   let totalMentions = 0;
   const brandCount: Record<string, { count: number; avgPos: number }> = {};
+
   items.forEach((item: SampleDatasetItem) => {
     if (!item.json_content) return;
-    let tools: any[] = [];
     try {
-      const parsed = JSON.parse(item.json_content);
-      // Manejar diferentes formatos de json_content
-      if (Array.isArray(parsed)) {
-        tools = parsed;
-      } else if (parsed.courses && Array.isArray(parsed.courses)) {
-        tools = parsed.courses;
-      } else if (parsed.tools && Array.isArray(parsed.tools)) {
-        tools = parsed.tools;
-      } else {
-        // Si no es un array conocido, no procesar
-        return;
-      }
-    } catch {
-      // Si falla el parsing, continuar con el siguiente item
-      return;
-    }
+      const tools = JSON.parse(item.json_content);
+      if (!Array.isArray(tools)) return;
 
-    // Verificar que tools sea un array antes de usar forEach
-    if (!Array.isArray(tools)) return;
+      tools.forEach(tool => {
+        const rawName = tool.name || tool.nombre;
+        const name = normalizeBrandName(rawName);
+        const pos = tool.position || tool.posicion || 0;
+        if (!name) return;
 
-    tools.forEach(tool => {
-      const name = tool.name || tool.nombre;
-      const pos = tool.position || tool.posicion || 0;
-      if (!name) return;
-      if (!brandCount[name]) brandCount[name] = { count: 0, avgPos: 0 };
-      brandCount[name].count++;
-      brandCount[name].avgPos += Number(pos) || 0;
-      totalMentions++;
-      if (name.toLowerCase().includes('genially')) {
-        geniallyMentions++;
-        if (pos) geniallyPositions.push(Number(pos));
-      }
-    });
+        if (!brandCount[name]) brandCount[name] = { count: 0, avgPos: 0 };
+        brandCount[name].count++;
+        brandCount[name].avgPos += Number(pos) || 0;
+        totalMentions++;
+
+        if (name === 'Genially') {
+          geniallyMentions++;
+          if (pos) geniallyPositions.push(Number(pos));
+        }
+      });
+    } catch { }
   });
-  // Calcular posición media de Genially
+
   const geniallyAvgPos = geniallyPositions.length > 0 ? (geniallyPositions.reduce((a, b) => a + b, 0) / geniallyPositions.length) : null;
-  // Calcular share of voice de Genially
   const geniallyShare = totalMentions > 0 ? (geniallyMentions / totalMentions) * 100 : null;
-  // Top 3 marcas por count
   const topBrands = Object.entries(brandCount)
     .map(([brand, data]) => ({ brand, count: data.count, avgPos: data.count > 0 ? data.avgPos / data.count : 0 }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 3);
-  return {
-    geniallyAvgPos,
-    geniallyShare,
-    topBrands,
-  };
+
+  return { geniallyAvgPos, geniallyShare, topBrands };
 }
 
-// Añadir componente auxiliar para la mini barra de progreso
 function MiniBar({ percent }: { percent: number }) {
   return (
-    <div className="w-60 h-2 mt-1 bg-gray-200 rounded mx-auto">
+    <div className="w-full h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
       <div
-        className="h-2 rounded bg-orange-400"
-        style={{ width: `${percent}%`, minWidth: percent > 0 ? '8px' : 0 }}
+        className={`h-full rounded-full ${percent > 50 ? 'bg-emerald-500' : percent > 20 ? 'bg-primary' : 'bg-slate-300'}`}
+        style={{ width: `${percent}%` }}
       />
     </div>
   );
 }
 
 export default function MarketShareAnalyzer() {
-  // --- AUTENTICACIÓN DESACTIVADA ---
-  // const [isAuthenticated, setIsAuthenticated] = useState(false)
-  // const [password, setPassword] = useState("")
-  // const [showPassword, setShowPassword] = useState(false)
-  // const [authError, setAuthError] = useState("")
-  // const [authLoading, setAuthLoading] = useState(false)
-
-  // const CORRECT_PASSWORD = "GeniallyTeam2025**"
-  // const handleLogin = () => { ... }
-  // const handleKeyPress = (e: React.KeyboardEvent) => { ... }
-
-  // if (!isAuthenticated) {
-  //   return (
-  //     <>
-  //       <Topbar />
-  //       <div className="min-h-screen bg-gradient-to-br bg-[#F9F8FC] from-[var(--background)] to-[var(--primary)] flex items-center justify-center p-4" suppressHydrationWarning>
-  //         <Card className="w-full max-w-md bg-[#F9F8FC] border-none shadow-none">
-  //           <CardHeader className="text-center space-y-4">
-  //             <img src="/favicon.png" alt="Genially Logo" className="mx-auto w-10 h-10 mb-4" />
-  //             <div suppressHydrationWarning>
-  //               <CardTitle className="text-2xl text-foreground">Acceso Restringido</CardTitle>
-  //             </div>
-  //           </CardHeader>
-  //           <CardContent className="space-y-4">
-  //             <div className="space-y-2">
-  //               <div className="relative">
-  //                 <Input ... />
-  //                 <Button ... >...</Button>
-  //               </div>
-  //             </div>
-  //             {authError && (<Alert ...>{authError}</Alert>)}
-  //             <Button ... >...</Button>
-  //             <div className="text-center text-sm text-muted-foreground" suppressHydrationWarning>
-  //               <p>Herramienta interna del equipo Genially</p>
-  //             </div>
-  //           </CardContent>
-  //         </Card>
-  //       </div>
-  //     </>
-  //   )
-  // }
-  // --- FIN AUTENTICACIÓN DESACTIVADA ---
-
-  const [apiKey, setApiKey] = useState("genially-team-2025")
-  const [error, setError] = useState("")
-  const [analysisResult, setAnalysisResult] = useState<MarketShareResult | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [results, setResults] = useState<MarketShareResult | null>(null)
-  const [selectedDetailBrand, setSelectedDetailBrand] = useState<string>("all")
-
-  // Estado para los datos del dataset
   const [dataset, setDataset] = useState<SampleDatasetItem[]>([]);
-  const [datasetLoading, setDatasetLoading] = useState(true);
-  const [datasetError, setDatasetError] = useState<string | null>(null);
-
+  const [latestBatch, setLatestBatch] = useState<SampleDatasetItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedMetric, setSelectedMetric] = useState<'sov' | 'avgPos'>('sov');
   const router = useRouter();
 
-  // Cargar datos de Firestore al montar el componente
   useEffect(() => {
     const loadData = async () => {
-      setDatasetLoading(true);
-      setDatasetError(null);
       try {
-        const data = await getSampleDataset();
-        setDataset(data);
+        const [fullData, latestData] = await Promise.all([
+          getSampleDataset(),
+          getLatestDataBatch()
+        ]);
+        setDataset(fullData);
+        setLatestBatch(latestData);
       } catch (error) {
         console.error('Error loading dataset:', error);
-        setDatasetError(error instanceof Error ? error.message : 'Error desconocido al cargar datos');
       } finally {
-        setDatasetLoading(false);
+        setLoading(false);
       }
     };
     loadData();
   }, []);
 
-  // Al autenticar, carga automáticamente el SAMPLE_DATASET
-  // const handleLogin = () => {
-  //   setAuthLoading(true)
-  //   setAuthError("")
+  // Global Metrics (from latest batch only)
+  const globalStats = useMemo(() => {
+    if (latestBatch.length === 0) return null;
 
-  //   setTimeout(() => {
-  //     if (password === CORRECT_PASSWORD) {
-  //       setIsAuthenticated(true)
-  //       setAuthError("")
-  //       setTimeout(() => {
-  //         analyzeData()
-  //       }, 100)
-  //     } else {
-  //       setAuthError("Contraseña incorrecta. Inténtalo de nuevo.")
-  //     }
-  //     setAuthLoading(false)
-  //   }, 500)
-  // }
+    let totalMentions = 0;
+    let geniallyMentions = 0;
+    let geniallyPositions: number[] = [];
+    let promptsWithGenially = new Set<string>();
+    const totalPrompts = new Set(latestBatch.map(d => d.prompt)).size;
 
-  // const handleKeyPress = (e: React.KeyboardEvent) => {
-  //   if (e.key === "Enter") {
-  //     handleLogin()
-  //   }
-  // }
-
-  // Solo usa dataset, elimina la opción de analizar JSON manualmente
-  const analyzeData = () => {
-    if (!apiKey) {
-      setError("Por favor, ingresa una API key")
-      return
-    }
-
-    setLoading(true)
-    const data = dataset
-    console.log("Datos cargados:", data)
-
-    // Verificar la estructura de los datos en tools
-    let tools: any[] = [];
-    try {
-      if (data[0]?.json_content) {
-        const parsed = JSON.parse(data[0].json_content);
-        if (Array.isArray(parsed)) {
-          tools = parsed;
-        } else if (parsed.courses && Array.isArray(parsed.courses)) {
-          tools = parsed.courses;
-        } else if (parsed.tools && Array.isArray(parsed.tools)) {
-          tools = parsed.tools;
-        }
-      }
-    } catch { }
-    if (Array.isArray(tools)) {
-      tools.forEach((tool, index) => {
-        console.log(`Tool ${index + 1}:`, {
-          name: tool.name,
-          nombre: tool.nombre,
-          raw: tool
-        })
-      })
-    }
-
-    const totalQueries = data.length
-    const uniqueQueries = new Set(data.map((item: SampleDatasetItem) => (item.keyword || "").toLowerCase())).size
-
-    // Calcular frecuencias de queries
-    const queryCounts: { [key: string]: { count: number; withBrands: number; withGenially: number } } = {}
-    data.forEach((item: SampleDatasetItem) => {
-      const query = (item.keyword || "").toLowerCase()
-      if (!queryCounts[query]) {
-        queryCounts[query] = { count: 0, withBrands: 0, withGenially: 0 }
-      }
-      queryCounts[query].count++
-      // Verificar si tiene marcas
-      let tools: any[] = [];
+    latestBatch.forEach(item => {
       try {
-        tools = item.json_content ? JSON.parse(item.json_content) : [];
-      } catch { }
-      if (tools.length > 0) {
-        queryCounts[query].withBrands++
-      }
-      // Verificar si tiene Genially
-      if (tools.some(tool => (tool.name || tool.nombre || "").toLowerCase().includes("genially"))) {
-        queryCounts[query].withGenially++
-      }
-    })
+        const tools = JSON.parse(item.json_content || '[]');
+        if (!Array.isArray(tools)) return;
 
-    const queryFrequencies = Object.entries(queryCounts)
-      .map(([query, data]) => ({
-        query,
-        count: data.count,
-        withBrands: data.withBrands,
-        withGenially: data.withGenially,
-        percentage: (data.count / totalQueries) * 100
-      }))
-      .sort((a, b) => b.count - a.count)
-
-    // Función auxiliar para verificar si una marca es Genially
-    const isGenially = (name: string) => {
-      if (!name) return false
-      const normalizedName = name.toLowerCase()
-      const result = normalizedName.includes("genially")
-      console.log(`Verificando si "${name}" es Genially: ${result}`)
-      return result
-    }
-
-    // Calcular total de menciones de marcas y menciones de Genially
-    let totalBrandMentions = 0
-    let geniallyMentions = 0
-    let queriesWithGenially = 0
-    const brandCounts: { [key: string]: { count: number; totalSentiment: number } } = {}
-
-    data.forEach((item: SampleDatasetItem, index: number) => {
-      let hasGeniallyInQuery = false
-      console.log(`\nProcesando query ${index + 1}:`, item.keyword)
-      // Procesar tools
-      let tools: any[] = [];
-      try {
-        if (item.json_content) {
-          const parsed = JSON.parse(item.json_content);
-          if (Array.isArray(parsed)) {
-            tools = parsed;
-          } else if (parsed.courses && Array.isArray(parsed.courses)) {
-            tools = parsed.courses;
-          } else if (parsed.tools && Array.isArray(parsed.tools)) {
-            tools = parsed.tools;
-          }
-        }
-      } catch { }
-      if (Array.isArray(tools)) {
-        tools.forEach((tool) => {
-          const brand = tool.name || tool.nombre || ""
-          if (!brand) {
-            console.log("Tool sin nombre encontrada:", tool)
-            return
-          }
-          totalBrandMentions++
-          console.log(`Marca encontrada: "${brand}"`)
-          // Actualizar conteo de marcas
-          if (!brandCounts[brand]) {
-            brandCounts[brand] = { count: 0, totalSentiment: 0 }
-          }
-          brandCounts[brand].count++
-          brandCounts[brand].totalSentiment += tool.sentiment || tool.sentimiento || 0
-          if (isGenially(brand)) {
-            geniallyMentions++
-            hasGeniallyInQuery = true
-            console.log(`¡Genially encontrado en la query ${index + 1}!
-`)
-          }
-        })
-      }
-      // Si Genially aparece en esta query, incrementar el contador
-      if (hasGeniallyInQuery) {
-        queriesWithGenially++
-        console.log(`Query ${index + 1} tiene Genially. Total hasta ahora: ${queriesWithGenially}`)
-      }
-    })
-
-    // Calcular menciones de marcas
-    const totalQueriesWithBrands = data.filter((item: SampleDatasetItem) => {
-      let tools: any[] = [];
-      try {
-        tools = item.json_content ? JSON.parse(item.json_content) : [];
-      } catch { }
-      return tools.length > 0;
-    }).length
-
-    console.log("\nResumen de conteos:")
-    console.log("Total de queries:", totalQueries)
-    console.log("Queries con marcas:", totalQueriesWithBrands)
-    console.log("Total menciones de marcas:", totalBrandMentions)
-    console.log("Menciones de Genially:", geniallyMentions)
-    console.log("Queries con Genially:", queriesWithGenially)
-
-    // Calcular market share de Genially basado en menciones totales
-    const geniallyMarketShare = totalBrandMentions > 0 ? (geniallyMentions / totalBrandMentions) * 100 : 0
-
-    console.log("\nMarket Share de Genially:", geniallyMarketShare.toFixed(2) + "%")
-
-    // Crear distribución de marcas
-    const brandDistribution = Object.entries(brandCounts)
-      .map(([brand, data]) => ({
-        brand,
-        count: data.count,
-        percentage: (data.count / totalBrandMentions) * 100,
-        avgSentiment: data.totalSentiment / data.count
-      }))
-      .sort((a, b) => b.count - a.count)
-
-    const result: MarketShareResult = {
-      geniallyMarketShare,
-      totalQueriesWithBrands,
-      queriesWithGenially,
-      brandDistribution,
-      totalBrandMentions,
-      queryFrequencies,
-      totalQueries,
-      uniqueQueries,
-      rawData: data,
-    }
-
-    console.log("\nResultado final:", result)
-    setAnalysisResult(result)
-    setResults(result)
-    setLoading(false)
-  }
-
-  const clearData = () => {
-    setResults(null)
-    setError("")
-    analyzeData() // Siempre recarga el sample dataset
-  }
-
-  // Filtrar resultados basados en la query seleccionada
-  const filteredResults = useMemo(() => {
-    if (!results) {
-      return results
-    }
-
-    // Filtrar los datos originales por la query seleccionada
-    const filteredData = results.rawData.filter(
-      (item) => item.keyword && item.keyword.toLowerCase().trim() === "all", // Always show all queries
-    )
-
-    // Filtrar queries que mencionan marcas usando 'tools'
-    const queriesWithBrands = filteredData.filter((item) => {
-      let tools: any[] = [];
-      try {
-        tools = item.json_content ? JSON.parse(item.json_content) : [];
-      } catch { }
-      return Array.isArray(tools) && tools.length > 0;
-    })
-
-    // Contar queries que mencionan Genially usando 'tools'
-    const queriesWithGenially = queriesWithBrands.filter((item) => {
-      let tools: any[] = [];
-      try {
-        tools = item.json_content ? JSON.parse(item.json_content) : [];
-      } catch { }
-      return tools.some((tool: any) => (tool.name || tool.nombre || "").toLowerCase().includes("genially"));
-    })
-
-    // Contar todas las menciones de marcas usando 'tools'
-    const brandCounts: { [key: string]: { count: number; totalSentiment: number } } = {}
-    let totalBrandMentions = 0
-    queriesWithBrands.forEach((item) => {
-      let tools: any[] = [];
-      try {
-        if (item.json_content) {
-          const parsed = JSON.parse(item.json_content);
-          if (Array.isArray(parsed)) {
-            tools = parsed;
-          } else if (parsed.courses && Array.isArray(parsed.courses)) {
-            tools = parsed.courses;
-          } else if (parsed.tools && Array.isArray(parsed.tools)) {
-            tools = parsed.tools;
-          }
-        }
-      } catch { }
-      if (Array.isArray(tools)) {
-        tools.forEach((tool: any) => {
-          const brandName = tool.name || tool.nombre || ""
-          if (brandName) {
-            if (!brandCounts[brandName]) {
-              brandCounts[brandName] = { count: 0, totalSentiment: 0 }
-            }
-            brandCounts[brandName].count += 1
-            brandCounts[brandName].totalSentiment += tool.sentiment || tool.sentimiento || 0
-            totalBrandMentions++
-          }
-        })
-      }
-    })
-
-    // Crear distribución de marcas
-    const brandDistribution = Object.entries(brandCounts)
-      .map(([brand, data]) => ({
-        brand,
-        count: data.count,
-        percentage: (data.count / totalBrandMentions) * 100,
-        avgSentiment: data.totalSentiment / data.count
-      }))
-      .sort((a, b) => b.count - a.count)
-
-    // Calcular market share de Genially
-    const geniallyMarketShare =
-      queriesWithBrands.length > 0 ? (queriesWithGenially.length / queriesWithBrands.length) * 100 : 0
-
-    // Recalcular queryFrequencies para la query filtrada
-    const queryCounts: { [key: string]: { count: number; withBrands: number; withGenially: number } } = {}
-    filteredData.forEach((item) => {
-      const query = (item.keyword || "").toLowerCase()
-      if (!queryCounts[query]) {
-        queryCounts[query] = { count: 0, withBrands: 0, withGenially: 0 }
-      }
-      queryCounts[query].count++
-      let tools: any[] = [];
-      try {
-        tools = item.json_content ? JSON.parse(item.json_content) : [];
-      } catch { }
-      if (tools.length > 0) {
-        queryCounts[query].withBrands++
-      }
-      if (tools.some((tool: any) => (tool.name || tool.nombre || "").toLowerCase().includes("genially"))) {
-        queryCounts[query].withGenially++
-      }
-    })
-    const queryFrequencies = Object.entries(queryCounts)
-      .map(([query, data]) => ({
-        query,
-        count: data.count,
-        withBrands: data.withBrands,
-        withGenially: data.withGenially,
-        percentage: (data.count / filteredData.length) * 100
-      }))
-      .sort((a, b) => b.count - a.count)
-
-    return {
-      ...results,
-      geniallyMarketShare,
-      totalQueriesWithBrands: queriesWithBrands.length,
-      queriesWithGenially: queriesWithGenially.length,
-      brandDistribution,
-      totalBrandMentions,
-      totalQueries: filteredData.length,
-      queryFrequencies,
-      rawData: filteredData,
-    }
-  }, [results])
-
-  // Hook para calcular la evolución semanal de menciones por marca (Top 10 marcas)
-  const weeklyEvolutionData = useMemo(() => {
-    if (!results) return [];
-
-    // Obtener las 10 marcas más mencionadas
-    const topBrands = results.brandDistribution.slice(0, 10).map((b) => b.brand);
-
-    // Agrupar por semana y contar menciones por marca
-    const weekBrandCount: { [week: string]: { [brand: string]: number } } = {};
-
-    results.rawData.forEach((item) => {
-      if (!item.date) return;
-      const dateObj = new Date(item.date);
-      // Obtener el año y el número de semana ISO
-      const year = dateObj.getUTCFullYear();
-      const firstDayOfYear = new Date(Date.UTC(year, 0, 1));
-      const pastDaysOfYear = Math.floor((dateObj.getTime() - firstDayOfYear.getTime()) / 86400000);
-      // Semana ISO (aprox)
-      const week = Math.ceil((pastDaysOfYear + firstDayOfYear.getUTCDay() + 1) / 7);
-      const weekKey = `${year}-W${week.toString().padStart(2, "0")}`;
-
-      if (!weekBrandCount[weekKey]) weekBrandCount[weekKey] = {};
-
-      // Procesar tools en lugar de marcasMencionadas
-      let tools: any[] = [];
-      try {
-        if (item.json_content) {
-          const parsed = JSON.parse(item.json_content);
-          if (Array.isArray(parsed)) {
-            tools = parsed;
-          } else if (parsed.courses && Array.isArray(parsed.courses)) {
-            tools = parsed.courses;
-          } else if (parsed.tools && Array.isArray(parsed.tools)) {
-            tools = parsed.tools;
-          }
-        }
-      } catch { }
-      if (Array.isArray(tools)) {
-        tools.forEach((tool) => {
-          const brand = tool.name || tool.nombre || "";
-          if (brand && topBrands.includes(brand)) {
-            weekBrandCount[weekKey][brand] = (weekBrandCount[weekKey][brand] || 0) + 1;
+        tools.forEach(tool => {
+          const name = normalizeBrandName(tool.name || tool.nombre || "");
+          totalMentions++;
+          if (name === 'Genially') {
+            geniallyMentions++;
+            promptsWithGenially.add(item.prompt || "");
+            if (tool.position) geniallyPositions.push(Number(tool.position));
           }
         });
+      } catch { }
+    });
+
+    return {
+      sov: totalMentions > 0 ? (geniallyMentions / totalMentions) * 100 : 0,
+      avgPos: geniallyPositions.length > 0 ? geniallyPositions.reduce((a, b) => a + b, 0) / geniallyPositions.length : null,
+      reach: (promptsWithGenially.size / totalPrompts) * 100,
+      totalClusters: new Set(latestBatch.map(d => d.keyword)).size,
+      totalPrompts: totalPrompts
+    };
+  }, [latestBatch]);
+
+  const uniqueKeywords = useMemo(() => getUniqueKeywords(dataset), [dataset]);
+
+  // Evolution data: Genially metrics per cluster over time
+  const evolutionData = useMemo(() => {
+    if (dataset.length === 0) return [];
+
+    // Group by date and cluster
+    const dataMap = new Map<string, Map<string, { positions: number[], mentions: number, totalMentions: number }>>();
+
+    dataset.forEach(item => {
+      if (!item.date || !item.keyword) return;
+      const dateKey = new Date(item.date).toISOString().split('T')[0];
+      const cluster = item.keyword;
+
+      if (!dataMap.has(dateKey)) {
+        dataMap.set(dateKey, new Map());
       }
+      const dateData = dataMap.get(dateKey)!;
+
+      if (!dateData.has(cluster)) {
+        dateData.set(cluster, { positions: [], mentions: 0, totalMentions: 0 });
+      }
+      const clusterData = dateData.get(cluster)!;
+
+      try {
+        const tools = JSON.parse(item.json_content || '[]');
+        if (!Array.isArray(tools)) return;
+
+        tools.forEach(tool => {
+          const name = normalizeBrandName(tool.name || tool.nombre || "");
+          clusterData.totalMentions++;
+
+          if (name === 'Genially') {
+            clusterData.mentions++;
+            if (tool.position) clusterData.positions.push(Number(tool.position));
+          }
+        });
+      } catch { }
     });
 
-    // Convertir a array de objetos para Recharts, ordenado por semana
-    const sortedWeeks = Object.keys(weekBrandCount).sort();
-    return sortedWeeks.map((week) => {
-      const entry: any = { week };
-      topBrands.forEach((brand) => {
-        entry[brand] = weekBrandCount[week][brand] || 0;
+    // Convert to chart format
+    const chartData: any[] = [];
+    const sortedDates = Array.from(dataMap.keys()).sort();
+
+    sortedDates.forEach(dateKey => {
+      const dateData = dataMap.get(dateKey)!;
+      const dataPoint: any = { date: new Date(dateKey).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' }) };
+
+      dateData.forEach((clusterData, cluster) => {
+        if (selectedMetric === 'sov') {
+          dataPoint[cluster] = clusterData.totalMentions > 0
+            ? (clusterData.mentions / clusterData.totalMentions) * 100
+            : 0;
+        } else {
+          dataPoint[cluster] = clusterData.positions.length > 0
+            ? clusterData.positions.reduce((a, b) => a + b, 0) / clusterData.positions.length
+            : null;
+        }
       });
-      return entry;
+
+      chartData.push(dataPoint);
     });
-  }, [results]);
 
-  // Eliminar función getBrandDetails y cualquier lógica que use 'tools' o 'query' de dataset
+    return chartData;
+  }, [dataset, selectedMetric]);
 
-  // Obtener keywords únicas
-  const uniqueKeywords = getUniqueKeywords(dataset);
+  const queriesByDay = useMemo(() => {
+    const counts: Record<string, number> = {};
+    dataset.forEach(item => {
+      if (!item.date) return;
+      const key = new Date(item.date).toISOString().split('T')[0];
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([key, count]) => ({ dateKey: key, displayDate: new Date(key).toLocaleDateString(), count }))
+      .sort((a, b) => b.dateKey.localeCompare(a.dateKey));
+  }, [dataset]);
 
-  // Pantalla de login
-  // if (!isAuthenticated) {
-  //   return (
-  //     <>
-  //       <Topbar />
-  //       <div className="min-h-screen bg-gradient-to-br bg-[#F9F8FC] from-[var(--background)] to-[var(--primary)] flex items-center justify-center p-4" suppressHydrationWarning>
-  //         <Card className="w-full max-w-md bg-[#F9F8FC] border-none shadow-none">
-  //           <CardHeader className="text-center space-y-4">
-  //             <img src="/favicon.png" alt="Genially Logo" className="mx-auto w-10 h-10 mb-4" />
-  //             <div suppressHydrationWarning>
-  //               <CardTitle className="text-2xl text-foreground">Acceso Restringido</CardTitle>
-  //             </div>
-  //           </CardHeader>
-  //           <CardContent className="space-y-4">
-  //             <div className="space-y-2">
+  if (loading) return <div className="p-8 text-center text-muted-foreground">Cargando dashboard...</div>
 
-  //               <div className="relative">
-  //                 <Input
-  //                   id="password"
-  //                   type={showPassword ? "text" : "password"}
-  //                   value={password}
-  //                   onChange={(e) => setPassword(e.target.value)}
-  //                   onKeyPress={handleKeyPress}
-  //                   placeholder="Ingresa la contraseña..."
-  //                   className="pr-10"
-  //                 />
-  //                 <Button
-  //                   type="button"
-  //                   variant="ghost"
-  //                   size="sm"
-  //                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-  //                   onClick={() => setShowPassword(!showPassword)}
-  //                 >
-  //                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-  //                 </Button>
-  //               </div>
-  //             </div>
-
-  //             {authError && (
-  //               <Alert variant="destructive">
-  //                 <AlertDescription>{authError}</AlertDescription>
-  //               </Alert>
-  //             )}
-
-  //             <Button onClick={handleLogin} disabled={!password.trim() || authLoading} className="w-full bg-[#6C29FF] rounded-full">
-  //               {authLoading ? "Verificando..." : "Acceder"}
-  //             </Button>
-
-  //             <div className="text-center text-sm text-muted-foreground" suppressHydrationWarning>
-  //               <p>Herramienta interna del equipo Genially</p>
-  //             </div>
-  //           </CardContent>
-  //         </Card>
-  //       </div>
-  //     </>
-  //   )
-  // }
-
-  // Aplicación principal (solo se muestra después de autenticarse)
   return (
     <>
       <Topbar />
       <div className="bg-[#F9F8FC] min-h-screen bg-gradient-to-br from-[var(--background)] to-[var(--primary)] flex">
-        {/* Menú lateral */}
         <SidebarMenu />
-        <main className="flex-1 p-4">
-          <div className="max-w-8xl mx-auto space-y-6" suppressHydrationWarning>
+        <main className="flex-1 p-6 space-y-6">
+          <div className="max-w-7xl mx-auto space-y-6">
 
+            <header>
+              <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                <Globe className="text-primary w-6 h-6" />
+                Dashboard de Visibilidad IA
+              </h1>
+              <p className="text-slate-500 text-sm">Resumen global del impacto de Genially en motores de respuesta IA.</p>
+            </header>
 
-            {/* Listado de keywords únicas */}
-            <Card className="bg-transparent shadow-none border-none">
-              <CardHeader>
-                <CardTitle>Clusters</CardTitle>
-                <CardDescription>Clusters de palabras clave analizadas para medir la visibilidad de Genially.</CardDescription>
+            {/* Global Scorecards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card className="bg-white border-none shadow-sm">
+                <CardContent className="p-5">
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="p-2 bg-blue-50 rounded-lg text-blue-600"><TrendingUp className="w-5 h-5" /></div>
+                    <Badge variant="outline" className="text-[10px]">SOV GLOBAL</Badge>
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-800">{globalStats?.sov.toFixed(1)}%</h3>
+                  <p className="text-xs text-slate-500">Cuota de voz acumulada</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white border-none shadow-sm">
+                <CardContent className="p-5">
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600"><Target className="w-5 h-5" /></div>
+                    <Badge variant="outline" className="text-[10px]">POSICIÓN</Badge>
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-800">{globalStats?.avgPos !== null ? `#${globalStats?.avgPos.toFixed(1)}` : '-'}</h3>
+                  <p className="text-xs text-slate-500">Posición (cuando aparece)</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white border-none shadow-sm">
+                <CardContent className="p-5">
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="p-2 bg-orange-50 rounded-lg text-orange-600"><Search className="w-5 h-5" /></div>
+                    <Badge variant="outline" className="text-[10px]">ALCANCE</Badge>
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-800">{globalStats?.reach.toFixed(1)}%</h3>
+                  <p className="text-xs text-slate-500">Presencia en prompts únicos</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white border-none shadow-sm">
+                <CardContent className="p-5">
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="p-2 bg-purple-50 rounded-lg text-purple-600"><Activity className="w-5 h-5" /></div>
+                    <Badge variant="outline" className="text-[10px]">COBERTURA</Badge>
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-800">{globalStats?.totalClusters}</h3>
+                  <p className="text-xs text-slate-500">Áreas de contenido analizadas</p>
+                  <div className="mt-2 pt-2 border-t border-slate-100">
+                    <p className="text-xs text-slate-400"><span className="font-bold text-purple-600">{new Set(dataset.map(d => d.prompt)).size}</span> prompts totales</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Clusters Table */}
+            <Card className="bg-white shadow-sm border-none overflow-hidden">
+              <CardHeader className="border-b bg-slate-50/50">
+                <CardTitle className="text-lg">Clusters de Contenido</CardTitle>
+                <CardDescription>Explora el detalle por categoría de búsqueda.</CardDescription>
               </CardHeader>
-              <CardContent>
-                {datasetError ? (
-                  <Alert variant="destructive">
-                    <AlertDescription>
-                      <p className="font-semibold">Error al cargar datos desde Firestore</p>
-                      <p className="text-sm mt-1">{datasetError}</p>
-                    </AlertDescription>
-                  </Alert>
-                ) : datasetLoading ? (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">Cargando datos desde Firestore...</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto border rounded-xl">
-                    <table className="min-w-full bg-white">
-                      <thead className="bg-muted">
-                        <tr>
-                          <th className="px-4 py-2 text-left">Clusters</th>
-                          <th className="px-4 py-2 text-right">Rank</th>
-                          <th className="px-2 py-2 text-right w-28">Share of Voice</th>
-                          <th className="px-4 py-2 text-center">Top Brands</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {uniqueKeywords.length === 0 && (
-                          <tr><td colSpan={5} className="text-muted-foreground px-4 py-2">No hay keywords.</td></tr>
-                        )}
-                        {uniqueKeywords.map((kw, idx) => {
-                          const stats = getKeywordStats(kw, dataset);
-                          return (
-                            <tr
-                              key={kw}
-                              className="border-b last:border-b-0 hover:bg-muted/40 cursor-pointer"
-                              onClick={() => router.push(`/keyword/${encodeURIComponent(kw)}`)}
-                            >
-                              <td className="px-4 py-2 text-left">{kw}</td>
-                              <td className="px-4 py-2 text-right">{stats.geniallyAvgPos !== null ? stats.geniallyAvgPos.toFixed(2) : '-'}</td>
-                              <td className="px-2 py-2 text-right align-middle w-28">
-                                {stats.geniallyShare !== null ? stats.geniallyShare.toFixed(1) + '%' : '-'}
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-center">
+                    <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b">
+                      <tr>
+                        <th className="px-6 py-4 text-left font-semibold">Categoría</th>
+                        <th className="px-6 py-4 font-semibold">Posición (cuando aparece)</th>
+                        <th className="px-6 py-4 font-semibold w-48">Share of Voice</th>
+                        <th className="px-6 py-4 font-semibold">Principales Alternativas</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {uniqueKeywords.map((kw) => {
+                        const stats = getKeywordStats(kw, latestBatch);
+                        return (
+                          <tr
+                            key={kw}
+                            className="hover:bg-slate-50 transition-colors cursor-pointer"
+                            onClick={() => router.push(`/cluster/${encodeURIComponent(kw)}`)}
+                          >
+                            <td className="px-6 py-4 text-left font-medium text-slate-800">{kw}</td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-1 rounded text-xs font-bold ${stats.geniallyAvgPos && stats.geniallyAvgPos <= 3 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                                {stats.geniallyAvgPos !== null ? `#${stats.geniallyAvgPos.toFixed(1)}` : '-'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-col items-center">
+                                <span className="text-xs mb-1 font-semibold">{stats.geniallyShare !== null ? `${stats.geniallyShare.toFixed(1)}%` : '-'}</span>
                                 {stats.geniallyShare !== null && <MiniBar percent={stats.geniallyShare} />}
-                              </td>
-                              <td className="px-4 py-2 text-center">
-                                <div className="flex items-center justify-center gap-2">
-                                  {stats.topBrands.map((b, i) => {
-                                    const domain = getBrandDomain(b.brand);
-                                    return (
-                                      <Popover key={b.brand}>
-                                        <PopoverTrigger asChild>
-                                          <span className="inline-block">
-                                            <Badge variant="secondary" className="p-0 bg-white border shadow hover:bg-primary/10">
-                                              {domain ? (
-                                                <img src={`https://www.google.com/s2/favicons?domain=${domain}`} alt={b.brand} className="w-6 h-6 rounded-full" />
-                                              ) : (
-                                                <span className="w-6 h-6 flex items-center justify-center font-bold text-xs">{b.brand[0]}</span>
-                                              )}
-                                            </Badge>
-                                          </span>
-                                        </PopoverTrigger>
-                                        <PopoverContent side="top" className="bg-white border shadow-lg p-2 rounded text-xs max-w-xs">
-                                          {b.brand}
-                                        </PopoverContent>
-                                      </Popover>
-                                    );
-                                  })}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center justify-center -space-x-2">
+                                {stats.topBrands.map((b) => {
+                                  const domain = getBrandDomain(b.brand);
+                                  return (
+                                    <Popover key={b.brand}>
+                                      <PopoverTrigger asChild>
+                                        <div className="w-8 h-8 rounded-full border-2 border-white bg-white shadow-sm flex items-center justify-center cursor-help overflow-hidden">
+                                          {domain ? (
+                                            <img src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`} alt={b.brand} className="w-5 h-5 object-contain" />
+                                          ) : (
+                                            <span className="text-[10px] font-bold text-slate-400">{b.brand[0]}</span>
+                                          )}
+                                        </div>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-auto p-2 text-xs font-semibold">{b.brand}</PopoverContent>
+                                    </Popover>
+                                  );
+                                })}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </CardContent>
             </Card>
 
-            {/* Eliminar la Card de Debilidades y Oportunidades de la página principal */}
+            {/* Evolution Chart */}
+            <Card className="bg-white shadow-sm border-none overflow-hidden">
+              <CardHeader className="border-b bg-slate-50/50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">Evolución de Genially por Cluster</CardTitle>
+                    <CardDescription>Rendimiento histórico en cada área de contenido</CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setSelectedMetric('sov')}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${selectedMetric === 'sov'
+                        ? 'bg-primary text-white'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                    >
+                      Share of Voice
+                    </button>
+                    <button
+                      onClick={() => setSelectedMetric('avgPos')}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${selectedMetric === 'avgPos'
+                        ? 'bg-primary text-white shadow-md'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                    >
+                      Posición (cuando aparece)
+                    </button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="h-[400px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={evolutionData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fontSize: 11, fill: '#64748b' }}
+                        axisLine={{ stroke: '#e2e8f0' }}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 11, fill: '#64748b' }}
+                        axisLine={{ stroke: '#e2e8f0' }}
+                        label={{
+                          value: selectedMetric === 'sov' ? 'Share of Voice (%)' : 'Posición (cuando aparece)',
+                          angle: -90,
+                          position: 'insideLeft',
+                          style: { fontSize: 12, fill: '#64748b' }
+                        }}
+                      />
+                      <RechartsTooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '8px',
+                          fontSize: '12px'
+                        }}
+                        formatter={(value: any) => {
+                          if (value === null) return ['-', ''];
+                          return selectedMetric === 'sov'
+                            ? [`${Number(value).toFixed(1)}%`, '']
+                            : [`#${Number(value).toFixed(1)}`, ''];
+                        }}
+                      />
+                      <Legend
+                        wrapperStyle={{ fontSize: '11px' }}
+                        iconType="line"
+                      />
+                      {uniqueKeywords.map((cluster, idx) => {
+                        const colors = ['#5028FF', '#F59E0B', '#10B981', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'];
+                        return (
+                          <Line
+                            key={cluster}
+                            type="monotone"
+                            dataKey={cluster}
+                            stroke={colors[idx % colors.length]}
+                            strokeWidth={2}
+                            dot={{ r: 3 }}
+                            activeDot={{ r: 5 }}
+                            connectNulls
+                          />
+                        );
+                      })}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Activity Summary Section */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="bg-white border-none shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-primary" />
+                    Histórico de Consultas
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="max-h-48 overflow-y-auto space-y-2">
+                    {queriesByDay.map((row) => (
+                      <div key={row.dateKey} className="flex justify-between items-center text-xs p-2 bg-slate-50 rounded border border-slate-100">
+                        <span className="text-slate-600">{row.displayDate}</span>
+                        <span className="font-bold text-slate-800">{row.count} consultas</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="md:col-span-2 bg-white border-none shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-sm font-semibold">Resumen de Ejecución</CardTitle>
+                </CardHeader>
+                <CardContent className="flex items-center justify-around py-4">
+                  <div className="text-center group">
+                    <p className="text-3xl font-black text-primary group-hover:scale-110 transition-transform">{dataset.length}</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Capturas Totales</p>
+                  </div>
+                  <div className="text-center group text-orange-500">
+                    <p className="text-3xl font-black group-hover:scale-110 transition-transform">{new Set(dataset.map(d => d.prompt)).size}</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Prompts Analíticos</p>
+                  </div>
+                  <div className="text-center group text-emerald-500">
+                    <p className="text-3xl font-black group-hover:scale-110 transition-transform">{new Set(dataset.map(d => d.ia)).size}</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">IAs Evaluadas</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
           </div>
         </main>

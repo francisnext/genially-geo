@@ -11,6 +11,8 @@ export const metadata: Metadata = {
   }
 }
 
+import { Toaster } from 'sonner';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -23,6 +25,7 @@ export default function RootLayout({
       </head>
       <body className="bg-background text-foreground">
         {children}
+        <Toaster />
       </body>
     </html>
   )
