@@ -10,7 +10,20 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import Link from "next/link";
 import Topbar from "@/components/Topbar";
-import { CheckCircle, Circle } from "lucide-react";
+import {
+    CheckCircle,
+    Circle,
+    XCircle,
+    PlusCircle,
+    MinusCircle,
+    ExternalLink,
+    TrendingUp,
+    TrendingDown,
+    Target,
+    DollarSign,
+    Layers
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface KeywordPageClientProps {
     cluster: string
@@ -316,6 +329,198 @@ function MiniBar({ percent }: { percent: number }) {
                 className="h-2 rounded bg-orange-400"
                 style={{ width: `${percent}%`, minWidth: percent > 0 ? '8px' : 0 }}
             />
+        </div>
+    );
+}
+
+function RichResponse({ content }: { content: string }) {
+    const [isJson, setIsJson] = useState(false);
+    const [parsedData, setParsedData] = useState<any>(null);
+
+    useEffect(() => {
+        try {
+            // Limpiar posibles bloques de código markdown
+            let jsonStr = content.trim();
+            if (jsonStr.startsWith('```')) {
+                // Extraer el contenido entre los bloques de código
+                const match = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+                if (match) jsonStr = match[1];
+            }
+
+            const parsed = JSON.parse(jsonStr);
+            // Verificar si es el formato de herramientas/fuentes
+            if (parsed && (parsed.tools || parsed.sources)) {
+                setParsedData(parsed);
+                setIsJson(true);
+            } else {
+                setIsJson(false);
+            }
+        } catch (e) {
+            setIsJson(false);
+        }
+    }, [content]);
+
+    if (!isJson) {
+        return (
+            <div className="prose prose-sm max-w-none prose-p:mb-4 prose-a:underline prose-a:text-primary">
+                <ReactMarkdown>{content}</ReactMarkdown>
+            </div>
+        );
+    }
+
+    const { tools = [], sources = [] } = parsedData;
+
+    return (
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            {tools.length > 0 && (
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    {tools.map((tool: any, idx: number) => (
+                        <Card key={idx} className="group overflow-hidden border-none shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 ring-1 ring-slate-200/50">
+                            <div className="p-6 space-y-6">
+                                <div className="flex items-start justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="relative group-hover:scale-110 transition-transform duration-500">
+                                            <div className="absolute -inset-2 bg-gradient-to-tr from-primary/30 to-blue-500/30 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                            {tool.domain ? (
+                                                <img
+                                                    src={`https://www.google.com/s2/favicons?domain=${tool.domain}&sz=128`}
+                                                    alt={tool.name}
+                                                    className="relative w-14 h-14 rounded-2xl shadow-xl bg-white p-1.5 object-contain border border-slate-100"
+                                                />
+                                            ) : (
+                                                <div className="relative w-14 h-14 rounded-2xl shadow-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center text-primary font-black text-2xl border border-primary/20">
+                                                    {tool.name?.[0]}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-black text-xl text-slate-900 tracking-tight leading-none">{tool.name}</h3>
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <Badge variant="secondary" className="bg-slate-100 text-slate-600 font-bold px-2.5 py-0.5 border-none text-[10px] uppercase tracking-wider">
+                                                    Rank #{tool.position}
+                                                </Badge>
+                                                {tool.pricing && (
+                                                    <Badge variant="outline" className="text-blue-600 border-blue-100 bg-blue-50/50 font-bold text-[10px] uppercase tracking-wider">
+                                                        <DollarSign className="w-3 h-3 mr-1" /> {tool.pricing}
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {tool.sentiment !== undefined && (
+                                        <div className="flex flex-col items-end">
+                                            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-black shadow-lg shadow-black/5 ${tool.sentiment > 0.7 ? 'bg-emerald-500 text-white' :
+                                                tool.sentiment > 0.4 ? 'bg-amber-500 text-white' : 'bg-rose-500 text-white'
+                                                }`}>
+                                                {tool.sentiment > 0.5 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                                                {(tool.sentiment * 10).toFixed(1)}/10
+                                            </div>
+                                            <span className="text-[9px] text-slate-400 mt-1.5 font-bold uppercase tracking-[0.15em]">Analysis Sentiment</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {tool.features && tool.features.length > 0 && (
+                                    <div className="space-y-3">
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {tool.features.map((f: string, i: number) => (
+                                                <span key={i} className="text-[10px] font-bold bg-slate-50 border border-slate-100/50 text-slate-500 px-2.5 py-1.5 rounded-full shadow-sm hover:border-primary/30 transition-colors cursor-default">
+                                                    {f}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {tool.pros && tool.pros.length > 0 && (
+                                        <div className="p-4 rounded-[2rem] bg-emerald-50/30 border border-emerald-100/30 group-hover:bg-emerald-50/50 transition-colors duration-500">
+                                            <div className="flex items-center gap-2 text-emerald-700 font-extrabold text-[11px] uppercase tracking-widest mb-4 px-1">
+                                                <div className="p-1.5 bg-emerald-500 rounded-xl text-white shadow-md shadow-emerald-200">
+                                                    <PlusCircle className="w-3 h-3" />
+                                                </div>
+                                                Strengths
+                                            </div>
+                                            <ul className="space-y-2.5">
+                                                {tool.pros.map((p: string, i: number) => (
+                                                    <li key={i} className="text-[11px] text-slate-600 leading-normal flex items-start gap-2.5 font-medium">
+                                                        <CheckCircle className="w-3.5 h-3.5 mt-0 text-emerald-400 shrink-0" /> {p}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                    {tool.cons && tool.cons.length > 0 && (
+                                        <div className="p-4 rounded-[2rem] bg-rose-50/30 border border-rose-100/30 group-hover:bg-rose-50/50 transition-colors duration-500">
+                                            <div className="flex items-center gap-2 text-rose-700 font-extrabold text-[11px] uppercase tracking-widest mb-4 px-1">
+                                                <div className="p-1.5 bg-rose-500 rounded-xl text-white shadow-md shadow-rose-200">
+                                                    <MinusCircle className="w-3 h-3" />
+                                                </div>
+                                                Weaknesses
+                                            </div>
+                                            <ul className="space-y-2.5">
+                                                {tool.cons.map((c: string, i: number) => (
+                                                    <li key={i} className="text-[11px] text-slate-600 leading-normal flex items-start gap-2.5 font-medium">
+                                                        <XCircle className="w-3.5 h-3.5 mt-0 text-rose-400 shrink-0" /> {c}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {tool.url && (
+                                    <a
+                                        href={tool.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center justify-center gap-2 w-full py-4 bg-slate-900 hover:bg-primary text-white text-[11px] font-black uppercase tracking-widest rounded-2xl transition-all duration-500 shadow-xl shadow-slate-200 hover:shadow-primary/30 group/btn active:scale-[0.98]"
+                                    >
+                                        <span className="truncate max-w-[250px]">{getDomainFromUrl(tool.url) || tool.url}</span> <ExternalLink className="w-4 h-4 group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1 transition-transform" />
+                                    </a>
+                                )}
+                            </div>
+                        </Card>
+                    ))}
+                </div>
+            )}
+
+            {sources.length > 0 && (
+                <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-50 border border-slate-200/60 p-8 shadow-inner">
+                    <div className="absolute top-0 right-0 p-12 opacity-[0.03] rotate-12">
+                        <Layers className="w-48 h-48" />
+                    </div>
+                    <div className="relative">
+                        <div className="flex items-center justify-between mb-6">
+                            <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-2.5">
+                                <div className="w-8 h-[2px] bg-slate-200" />
+                                <Layers className="w-4 h-4 text-primary" /> Verified Sources
+                            </h4>
+                            <span className="text-[10px] font-bold text-slate-400 bg-white px-3 py-1 rounded-full border border-slate-100 shadow-sm">{sources.length} links found</span>
+                        </div>
+                        <div className="flex flex-wrap gap-3">
+                            {sources.map((url: string, idx: number) => {
+                                const domain = getDomainFromUrl(url);
+                                return (
+                                    <a
+                                        key={idx}
+                                        href={url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-3 bg-white hover:bg-primary/5 px-4 py-2.5 rounded-2xl border border-slate-200/50 shadow-sm hover:shadow-xl hover:border-primary/20 transition-all duration-300 text-[11px] font-bold text-slate-600 hover:text-primary group/source"
+                                    >
+                                        <div className="w-6 h-6 rounded-lg bg-slate-50 flex items-center justify-center group-hover/source:bg-white transition-colors border border-slate-100 shadow-inner">
+                                            <img src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`} alt="" className="w-4 h-4 grayscale group-hover/source:grayscale-0 transition-all duration-500" />
+                                        </div>
+                                        <span className="truncate max-w-[250px]">{domain}</span>
+                                        <ExternalLink className="w-3.5 h-3.5 opacity-20 group-hover/source:opacity-100 transition-all duration-300" />
+                                    </a>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -724,8 +929,8 @@ export default function KeywordPageClient({ cluster }: KeywordPageClientProps) {
                                                                                         {openIa === `${p.prompt}__${ia}` && (
                                                                                             <div className="pl-4 mt-2">
                                                                                                 {stats.items.map((item: SampleDatasetItem, idx: number) => (
-                                                                                                    <div key={idx} className="mb-2 p-2 bg-white rounded shadow-sm border text-sm max-w-none prose prose-sm prose-p:mb-4 prose-a:underline prose-a:text-primary">
-                                                                                                        <ReactMarkdown>{item.content}</ReactMarkdown>
+                                                                                                    <div key={idx} className="mb-2 p-4 bg-white/40 rounded-2xl shadow-sm border border-white/50 text-sm max-w-none">
+                                                                                                        <RichResponse content={item.content || ""} />
                                                                                                     </div>
                                                                                                 ))}
                                                                                             </div>
