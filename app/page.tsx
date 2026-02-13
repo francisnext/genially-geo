@@ -55,6 +55,9 @@ function getKeywordStats(keyword: string, datasetItems: SampleDatasetItem[]) {
   let totalMentions = 0;
   const brandCount: Record<string, { count: number; avgPos: number }> = {};
 
+  const totalPromptsInKeyword = new Set(items.map(i => i.prompt)).size;
+  const promptsWithGenially = new Set<string>();
+
   items.forEach((item: SampleDatasetItem) => {
     if (!item.json_content) return;
     try {
@@ -74,6 +77,7 @@ function getKeywordStats(keyword: string, datasetItems: SampleDatasetItem[]) {
 
         if (name === 'Genially') {
           geniallyMentions++;
+          promptsWithGenially.add(item.prompt || "");
           if (pos) geniallyPositions.push(Number(pos));
         }
       });
@@ -87,7 +91,13 @@ function getKeywordStats(keyword: string, datasetItems: SampleDatasetItem[]) {
     .sort((a, b) => b.count - a.count)
     .slice(0, 3);
 
-  return { geniallyAvgPos, geniallyShare, topBrands };
+  return {
+    geniallyAvgPos,
+    geniallyShare,
+    topBrands,
+    geniallyPromptCount: promptsWithGenially.size,
+    totalPromptCount: totalPromptsInKeyword
+  };
 }
 
 function MiniBar({ percent }: { percent: number }) {
@@ -158,8 +168,16 @@ export default function MarketShareAnalyzer() {
       avgPos: geniallyPositions.length > 0 ? geniallyPositions.reduce((a, b) => a + b, 0) / geniallyPositions.length : null,
       reach: (promptsWithGenially.size / totalPrompts) * 100,
       totalClusters: new Set(latestBatch.map(d => d.keyword)).size,
-      totalPrompts: totalPrompts
+      totalPrompts: totalPrompts,
+      promptsWithGeniallyCount: promptsWithGenially.size
     };
+  }, [latestBatch]);
+
+  const latestBatchDate = useMemo(() => {
+    if (latestBatch.length === 0) return null;
+    const dateStr = latestBatch[0].date;
+    if (!dateStr) return null;
+    return new Date(dateStr).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
   }, [latestBatch]);
 
   const uniqueKeywords = useMemo(() => getUniqueKeywords(dataset), [dataset]);
@@ -250,12 +268,20 @@ export default function MarketShareAnalyzer() {
         <main className="flex-1 p-6 space-y-6">
           <div className="max-w-7xl mx-auto space-y-6">
 
-            <header>
-              <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <Globe className="text-primary w-6 h-6" />
-                Dashboard de Visibilidad IA
-              </h1>
-              <p className="text-slate-500 text-sm">Resumen global del impacto de Genially en motores de respuesta IA.</p>
+            <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                  <Globe className="text-primary w-6 h-6" />
+                  Dashboard de Visibilidad IA
+                </h1>
+                <p className="text-slate-500 text-sm">Resumen global del impacto de Genially en motores de respuesta IA.</p>
+              </div>
+              {latestBatchDate && (
+                <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 px-3 py-1 flex items-center gap-2 w-fit">
+                  <Activity className="w-3 h-3" />
+                  Última extracción: {latestBatchDate}
+                </Badge>
+              )}
             </header>
 
             {/* Global Scorecards */}
@@ -277,8 +303,12 @@ export default function MarketShareAnalyzer() {
                     <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600"><Target className="w-5 h-5" /></div>
                     <Badge variant="outline" className="text-[10px]">POSICIÓN</Badge>
                   </div>
-                  <h3 className="text-2xl font-black text-slate-800">{globalStats?.avgPos !== null ? `#${globalStats?.avgPos.toFixed(1)}` : '-'}</h3>
-                  <p className="text-xs text-slate-500">Posición (cuando aparece)</p>
+                  <h3 className="text-2xl font-black text-slate-800">
+                    {globalStats?.avgPos !== null ? `#${globalStats?.avgPos.toFixed(1)}` : '-'}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    En <span className="font-bold">{globalStats?.promptsWithGeniallyCount}/{globalStats?.totalPrompts}</span> prompts
+                  </p>
                 </CardContent>
               </Card>
 
@@ -336,9 +366,14 @@ export default function MarketShareAnalyzer() {
                           >
                             <td className="px-6 py-4 text-left font-medium text-slate-800">{kw}</td>
                             <td className="px-6 py-4">
-                              <span className={`px-2 py-1 rounded text-xs font-bold ${stats.geniallyAvgPos && stats.geniallyAvgPos <= 3 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                                {stats.geniallyAvgPos !== null ? `#${stats.geniallyAvgPos.toFixed(1)}` : '-'}
-                              </span>
+                              <div className="flex flex-col items-center">
+                                <span className={`px-2 py-1 rounded text-xs font-bold ${stats.geniallyAvgPos && stats.geniallyAvgPos <= 3 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                                  {stats.geniallyAvgPos !== null ? `#${stats.geniallyAvgPos.toFixed(1)}` : '-'}
+                                </span>
+                                <span className="text-[10px] text-slate-400 mt-1">
+                                  ({stats.geniallyPromptCount}/{stats.totalPromptCount} queries)
+                                </span>
+                              </div>
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex flex-col items-center">
