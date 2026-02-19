@@ -15,6 +15,13 @@ import { Loader2, Beaker, CheckCircle2, AlertCircle } from 'lucide-react';
 import { analyzeKeyword } from '@/app/actions/analyze-keyword';
 import { toast } from 'sonner';
 
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
+
 export function TestAllModelsTrigger() {
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -55,15 +62,33 @@ export function TestAllModelsTrigger() {
         }
     };
 
-    if (!isLocal) return null;
-
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button variant="ghost" className="w-full gap-3 justify-start px-2 py-2 font-semibold text-primary hover:bg-accent hover:rounded-xl text-sm">
-                    <Beaker className="w-5 h-5 text-primary" /> Probar Conexión IAs
-                </Button>
-            </DialogTrigger>
+        <TooltipProvider>
+            <Dialog open={open} onOpenChange={setOpen}>
+                {!isLocal ? (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className="w-full">
+                                <Button 
+                                    variant="ghost" 
+                                    disabled 
+                                    className="w-full gap-3 justify-start px-2 py-2 font-semibold text-primary opacity-50 cursor-not-allowed text-sm"
+                                >
+                                    <Beaker className="w-5 h-5 text-primary" /> Probar Conexión IAs
+                                </Button>
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Solo puede correr el informe francis@genially.com</p>
+                        </TooltipContent>
+                    </Tooltip>
+                ) : (
+                    <DialogTrigger asChild>
+                        <Button variant="ghost" className="w-full gap-3 justify-start px-2 py-2 font-semibold text-primary hover:bg-accent hover:rounded-xl text-sm">
+                            <Beaker className="w-5 h-5 text-primary" /> Probar Conexión IAs
+                        </Button>
+                    </DialogTrigger>
+                )}
             <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
                     <DialogTitle>Test de Conexión Multi-IA</DialogTitle>
@@ -111,5 +136,6 @@ export function TestAllModelsTrigger() {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+        </TooltipProvider>
     );
 }

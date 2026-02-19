@@ -46,12 +46,18 @@ export default function SidebarMenu() {
       </div>
 
       <div className="flex-1 p-4 space-y-8 overflow-hidden">
-        {/* Main Analytics Section */}
+        {/* AI Analytics Section */}
         <section className="space-y-1">
-          <h3 className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Visibilidad</h3>
+          <h3 className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Visibilidad en AI</h3>
           <NavLink href="/" icon={Home} label="Dashboard" />
           <NavLink href="/analisis-competidores" icon={Layers} label="Competidores" />
           <NavLink href="/debilidades-oportunidades" icon={AlertTriangle} label="Oportunidades" />
+        </section>
+
+        {/* Google Analytics Section */}
+        <section className="space-y-1">
+          <h3 className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Visibilidad en Google</h3>
+          <NavLink href="/visibilidad-google" icon={Search} label="Search Console" />
         </section>
 
         {/* Resources Section */}

@@ -7,7 +7,7 @@ export default function Topbar() {
 
       <Link href="/" className="flex items-center gap-3">
         <img src="/favicon.png" alt="Genially Logo" className="w-8 h-8 mr-2" />
-        <span className="text-xl text-white tracking-tight select-none">Genially Geo</span>
+        <span className="text-xl text-white tracking-tight select-none">Genially Brand Visibility</span>
       </Link>
 
       <nav className="ml-auto flex gap-4 items-center">

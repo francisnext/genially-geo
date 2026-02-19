@@ -15,6 +15,13 @@ import { Loader2, Play, Layers } from 'lucide-react';
 import { analyzeKeyword, getCSVKeywords } from '@/app/actions/analyze-keyword';
 import { toast } from 'sonner';
 
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
+
 export function BulkAnalysisTrigger() {
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -63,15 +70,33 @@ export function BulkAnalysisTrigger() {
         setIsLocal(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
     }, []);
 
-    if (!isLocal) return null;
-
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button variant="ghost" className="w-full gap-3 justify-start px-2 py-2 font-semibold text-white bg-slate-500 text-sm hover:bg-slate-600 hover:text-white">
-                    <Layers className="w-5 h-5 text-white" /> Ejecutar Análisis
-                </Button>
-            </DialogTrigger>
+        <TooltipProvider>
+            <Dialog open={open} onOpenChange={setOpen}>
+                {!isLocal ? (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className="w-full">
+                                <Button 
+                                    variant="ghost" 
+                                    disabled 
+                                    className="w-full gap-3 justify-start px-2 py-2 font-semibold text-white bg-slate-400 opacity-50 cursor-not-allowed text-sm"
+                                >
+                                    <Layers className="w-5 h-5 text-white" /> Ejecutar Análisis
+                                </Button>
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Solo puede correr el informe francis@genially.com</p>
+                        </TooltipContent>
+                    </Tooltip>
+                ) : (
+                    <DialogTrigger asChild>
+                        <Button variant="ghost" className="w-full gap-3 justify-start px-2 py-2 font-semibold text-white bg-slate-500 text-sm hover:bg-slate-600 hover:text-white">
+                            <Layers className="w-5 h-5 text-white" /> Ejecutar Análisis
+                        </Button>
+                    </DialogTrigger>
+                )}
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle>Análisis en Bulk</DialogTitle>
@@ -125,5 +150,6 @@ export function BulkAnalysisTrigger() {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+        </TooltipProvider>
     );
 }
