@@ -23,6 +23,8 @@ import {
   ShieldAlert
 } from "lucide-react"
 import { generateStrategicReportAction, getLatestStrategicReportAction } from "@/app/actions/strategic-analysis"
+import { sendSlackNotificationAction } from "@/app/actions/slack-notification"
+import { sendSlackManualAction } from "@/app/actions/send-slack-manual"
 import { StrategicReport } from "@/lib/strategic-report-service"
 import ReactMarkdown from "react-markdown"
 import { toast } from "sonner"
@@ -31,6 +33,7 @@ export default function DebilidadesOportunidadesPage() {
   const [report, setReport] = useState<StrategicReport | null>(null)
   const [loading, setLoading] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isSendingSlack, setIsSendingSlack] = useState(false)
 
   useEffect(() => {
     loadLatestReport()
@@ -51,11 +54,37 @@ export default function DebilidadesOportunidadesPage() {
     const res = await generateStrategicReportAction()
     if (res.success) {
       toast.success("¡Informe estratégico generado con éxito!")
-      loadLatestReport()
+      await loadLatestReport()
+
+      // Enviar a Slack después de cargar el reporte
+      setTimeout(async () => {
+        const reportData = await getLatestStrategicReportAction()
+        if (reportData.success && reportData.report) {
+          toast.loading("Enviando notificación a Slack...")
+          const slackRes = await sendSlackNotificationAction(reportData.report)
+          if (slackRes.success) {
+            toast.success("✅ Notificación enviada a Luis en Slack")
+          } else {
+            toast.error("No se pudo enviar a Slack: " + slackRes.error)
+          }
+        }
+      }, 500)
     } else {
       toast.error(res.error || "Error al generar el informe")
     }
     setIsGenerating(false)
+  }
+
+  const handleSendSlack = async () => {
+    setIsSendingSlack(true)
+    toast.loading("Enviando mensaje a Slack...")
+    const res = await sendSlackManualAction()
+    if (res.success) {
+      toast.success("✅ Mensaje enviado a Slack correctamente")
+    } else {
+      toast.error("Error: " + res.error)
+    }
+    setIsSendingSlack(false)
   }
 
   if (loading) return (
@@ -84,18 +113,34 @@ export default function DebilidadesOportunidadesPage() {
                 <p className="text-slate-500 text-sm">Consultoría experta basada en la última extracción de datos.</p>
               </div>
 
-              <Button
-                onClick={handleGenerate}
-                className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 transition-all font-bold group px-6 h-12"
-                disabled={isGenerating}
-              >
-                {isGenerating ? (
-                  <RefreshCcw className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Sparkles className="w-4 h-4 mr-2 group_hover:animate-pulse" />
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleGenerate}
+                  className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 transition-all font-bold group px-6 h-12"
+                  disabled={isGenerating}
+                >
+                  {isGenerating ? (
+                    <RefreshCcw className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4 mr-2 group_hover:animate-pulse" />
+                  )}
+                  {report ? "Actualizar Informe" : "Generar Informe con IA"}
+                </Button>
+                {report && (
+                  <Button
+                    onClick={handleSendSlack}
+                    className="bg-slate-600 hover:bg-slate-700 text-white shadow-lg shadow-slate-600/20 transition-all font-bold h-12"
+                    disabled={isSendingSlack}
+                  >
+                    {isSendingSlack ? (
+                      <RefreshCcw className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <span className="text-lg mr-2">💬</span>
+                    )}
+                    Enviar a Slack
+                  </Button>
                 )}
-                {report ? "Actualizar Informe" : "Generar Informe con IA"}
-              </Button>
+              </div>
             </header>
 
             {!report && !isGenerating ? (

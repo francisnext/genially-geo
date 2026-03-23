@@ -65,18 +65,18 @@ export async function generateStrategicReportAction() {
         const latestDate = rawData[0].date || new Date().toISOString();
 
         const clients = LLMFactory.createClients();
-        const gemini = clients.find(c => c.name === 'Gemini') || clients[0];
+        const chatgpt = clients.find(c => c.name === 'ChatGPT');
 
-        if (!gemini) {
-            return { success: false, error: 'No se encontró un cliente de IA configurado.' };
+        if (!chatgpt) {
+            return { success: false, error: 'No se encontró un cliente de ChatGPT/OpenAI configurado. Verifica tu OPENAI_API_KEY.' };
         }
 
         const userPrompt = `Analiza los siguientes datos del lote del día ${latestDate}:
     ${JSON.stringify(aggregated, null, 2)}
-    
+
     Proporciona un informe experto que ayude a Genially a dominar estos clusters en las respuestas de la IA.`;
 
-        const response = await gemini.generate(STRATEGIC_SYSTEM_PROMPT, userPrompt);
+        const response = await chatgpt.generate(STRATEGIC_SYSTEM_PROMPT, userPrompt);
 
         if (response.json) {
             const reportId = await saveStrategicReport({

@@ -94,29 +94,22 @@ export async function fetchLatestStrategicReport(): Promise<StrategicReport | nu
 export function aggregateDataForAi(items: SampleDatasetItem[]) {
     const clustersMap = new Map<string, {
         name: string,
-        totalPrompts: number,
-        geniallyMentions: number,
+        promptsWithGenially: Set<string>,
+        totalPrompts: Set<string>,
         positions: number[],
         sentiments: number[],
         features: Set<string>,
         competitorFeatures: Set<string>
     }>();
 
-    // Group by cluster
-    const uniquePromptsPerCluster = new Map<string, Set<string>>();
-
     items.forEach(item => {
         const cluster = item.keyword || 'General';
-        if (!uniquePromptsPerCluster.has(cluster)) {
-            uniquePromptsPerCluster.set(cluster, new Set());
-        }
-        uniquePromptsPerCluster.get(cluster)!.add(item.prompt || '');
 
         if (!clustersMap.has(cluster)) {
             clustersMap.set(cluster, {
                 name: cluster,
-                totalPrompts: 0,
-                geniallyMentions: 0,
+                promptsWithGenially: new Set(),
+                totalPrompts: new Set(),
                 positions: [],
                 sentiments: [],
                 features: new Set(),
@@ -125,6 +118,10 @@ export function aggregateDataForAi(items: SampleDatasetItem[]) {
         }
 
         const stats = clustersMap.get(cluster)!;
+        const promptId = item.prompt || '';
+
+        // Track all unique prompts
+        stats.totalPrompts.add(promptId);
 
         try {
             const tools = JSON.parse(item.json_content || '[]');
@@ -134,7 +131,6 @@ export function aggregateDataForAi(items: SampleDatasetItem[]) {
                 const name = normalizeBrandName(t.name || t.nombre);
                 if (name === 'Genially') {
                     hasGenially = true;
-                    stats.geniallyMentions++;
                     if (t.position) stats.positions.push(Number(t.position));
                     if (t.sentiment !== undefined) stats.sentiments.push(Number(t.sentiment));
                     if (Array.isArray(t.features)) t.features.forEach((f: string) => stats.features.add(f));
@@ -143,15 +139,22 @@ export function aggregateDataForAi(items: SampleDatasetItem[]) {
                     if (Array.isArray(t.features)) t.features.forEach((f: string) => stats.competitorFeatures.add(f));
                 }
             });
+
+            // Count prompt only once per cluster (appearance in at least one result)
+            if (hasGenially) {
+                stats.promptsWithGenially.add(promptId);
+            }
         } catch { }
     });
 
     // Final aggregation
     return Array.from(clustersMap.values()).map(c => {
-        const totalClusterPrompts = uniquePromptsPerCluster.get(c.name)?.size || 1;
+        const totalClusterPrompts = c.totalPrompts.size || 1;
+        const geniallyPrompts = c.promptsWithGenially.size;
+
         return {
             name: c.name,
-            sov: (c.geniallyMentions / totalClusterPrompts) * 100,
+            sov: (geniallyPrompts / totalClusterPrompts) * 100,
             avgPos: c.positions.length > 0 ? c.positions.reduce((a, b) => a + b, 0) / c.positions.length : 0,
             avgSentiment: c.sentiments.length > 0 ? c.sentiments.reduce((a, b) => a + b, 0) / c.sentiments.length : 0,
             geniallyFeatures: Array.from(c.features).slice(0, 10),
